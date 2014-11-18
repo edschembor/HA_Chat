@@ -3,6 +3,7 @@
 
 #define MAX_MESSAGE_SIZE 80
 
+/** Used for the like list which is held by each message **/
 typedef struct like_node {
     int lamport_counter;
     int service_index;
@@ -10,6 +11,7 @@ typedef struct like_node {
     struct like_node * next;
 } like_node;
 
+/** Used for the message list which is held by each chatroom **/
 typedef struct message_node {
     int timestamp;
     int server_index;
@@ -19,6 +21,7 @@ typedef struct message_node {
     struct message_node * next;
 } message_node;
 
+/** Used for the chatroom list which is held by each server **/
 typedef struct chatroom_node {
     char * chatroom_name;
     struct message_node * mess_head;
@@ -30,6 +33,9 @@ typedef struct lamport_timestamp {
     int timestamp;
 } lamport_timestamp;
 
+
+
+/** Method declarations **/
 int add_chatroom(char * new_name);
 int add_message(char * new_mess, char * room_name, lamport_timestamp ts);
 int add_like(message_node * mess, like_node * new_like, lamport_timestamp ts);
@@ -55,8 +61,8 @@ int add_chatroom(char * new_name) {
         return 1;
     }
 
-    chatroom_node * curr = chatroom_head;
     //else find next null, add to end
+    chatroom_node * curr = chatroom_head;
     while (curr->next != NULL) {
         curr = curr->next;
     }
