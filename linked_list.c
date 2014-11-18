@@ -4,6 +4,7 @@
 
 #define MAX_MESSAGE_SIZE 80
 
+/** Used for the like list which is held by each message **/
 typedef struct like_node {
     int timestamp;
     int server_index;
@@ -11,6 +12,7 @@ typedef struct like_node {
     struct like_node * next;
 } like_node;
 
+/** Used for the message list which is held by each chatroom **/
 typedef struct message_node {
     int timestamp;
     int server_index;
@@ -20,6 +22,7 @@ typedef struct message_node {
     struct message_node * next;
 } message_node;
 
+/** Used for the chatroom list which is held by each server **/
 typedef struct chatroom_node {
     char * chatroom_name;
     struct message_node * mess_head;
@@ -31,6 +34,9 @@ typedef struct lamport_timestamp {
     int timestamp;
 } lamport_timestamp;
 
+
+
+/** Method declarations **/
 int add_chatroom(char * new_name);
 int add_message(char * new_mess, char * room_name, lamport_timestamp ts);
 int add_like(char * user, message_node * mess, lamport_timestamp ts);
@@ -56,6 +62,7 @@ int add_chatroom(char * new_name) {
         return 1;
     }
 
+<<<<<<< HEAD
     chatroom_node * curr = chatroom_head;
 
     /*
@@ -69,6 +76,10 @@ int add_chatroom(char * new_name) {
      */
 
     //else find next null, add to end, return if duplicate found
+=======
+    //else find next null, add to end
+    chatroom_node * curr = chatroom_head;
+>>>>>>> 7170ad370f70aa7be51a41255239b11abc281a42
     while (curr->next != NULL) {
         if (strcmp(curr->chatroom_name, new_name) == 0) {
             return 0;
