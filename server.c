@@ -39,9 +39,6 @@ int main(int argc, char *argv[])
 	test_timeout.sec = 5;
 	test_timeout.usec = 0;
 
-	printf(Spread_name);
-	printf("\n\n\n\n\n");
-
 	/** Connect to the Spread client **/
 	ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, Private_group,
 		test_timeout);
@@ -55,4 +52,35 @@ int main(int argc, char *argv[])
 	ret = SP_join(Mbox, server_group);
 	if(ret < 0) SP_error(ret);
 
+}
+
+static void Handle_messages()
+{
+	
+	/** Receive a message **/
+
+}
+
+int isMax(int vector[])
+{
+	/** Checks if the server for the given anti-entropy vector is the server
+	 *  with the most updates **/
+	int server_val = vector[machine_index - 1];
+	for(int i = 0; i < NUM_SERVERS; i++)
+		if(vector[i] > server_val)
+			return 0;
+	
+	return 1;
+
+}
+
+int minVal(int vector[])
+{
+	/** Gets the minimum value in the array - for removing updates  **/
+	int min = vector[0];
+	for(int i = 1; i < NUM_SERVERS; i++)
+		if(vector[i] < min)
+			min = vector[i];
+
+	return min;
 }
