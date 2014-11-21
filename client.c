@@ -11,8 +11,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "linked_list.c"
 #include "update.h"
+
+#include "linked_list.c"
+#include "user_list.c"
 
 #define MAX_STRING 80
 #define SPREAD_NAME "10030"
@@ -26,15 +28,17 @@ void Print_messages();
 char              user[MAX_STRING];
 char              chatroom[MAX_STRING];
 int               server;
+int               in_chatroom = 0; //1 if user has chosen a chatroom
+user_node         head; //linked list of users in connected chatroom
 
 static char       Spread_name[MAX_STRING] = SPREAD_NAME;
 static char       Private_group[MAX_STRING];
-static char       User[MAX_STRING] = "2";
+static char       User[MAX_STRING];
 static mailbox    Mbox;
 int               ret;
 
 char              option; //The action the user wants to take
-char              input; //The item which will be acted on or with
+char              *input;
 
 int               min_message_shown;
 char              messages_to_show[25][80];
@@ -67,12 +71,13 @@ int main()
 	Print_menu();
 
 	/** Deal with User Input **/
-	scanf("%c %80c", &option, &input);
+	scanf("%c %80c", &option, input);
 	switch(option)
 	{
 		case 'u':
 			/** Sets the user's username **/
-			*user = input;
+			user = input;
+
 		case 'c':
 			/** Connects the client to a server's default group **/
 			strcpy(chatroom, "default");
@@ -80,44 +85,70 @@ int main()
 			strcpy(chatroom, server_number);
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
-			server = (int) input; //For connection
+			server = atoi(input); //For connection
+
 		case 'j':
 			/** Leave the current chatroom and join a new one **/
 			SP_leave(Mbox, chatroom);
-			*chatroom = input;
+			chatroom = input;
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
+			in_chatroom = 1;
+
 		case 'a':
 			/** Create the append update and send it to the chatroom Spread group **/
+			if(!in_chatroom) {
+				printf("\nMust first connect to a chatroom\n");
+				break;
+			}
 			update_message->type = 0;
 			char* message = input;
 			update_message->message = input;
-			//Send out the update?
+			//Send out the update
+			
 		case 'l':
 			/** Create the like update and send it to the chatroom Spread group **/
-			chosen = (int) input;
+			if(!in_chatroom) {
+				printf("\nMust first connect to a chatroom\n");
+				break;
+			}
+			chosen = atoi(input);
 			if(!valid(chosen)) break;
 			update_message->type = 1;
 			update_message->liked_message_lamport = messages_shown_timestamps[chosen];
-			//Send out the update?
+			//Send out the update
+
 		case 'r':
 			/** Create the unlike update and send it to the chatroom Spread group **/
-			chosen = (int) input;
+			if(!in_chatroom) {
+				printf("\nMust first connect to a chatroom\n");
+				break;
+			}
+			chosen = atoi(input);
 			if(!valid(chosen)) break;
 			update_message->type = -1;
 			update_message->liked_message_lamport = messages_shown_timestamps[chosen];
-			//Send out the udpate?
+			//Send out the udpate
+
 		case 'h':
-			//TODO - Print server history
+			/** Print the entire chatroom's history stored on the server **/
+			//TODO
+			if(!in_chatroom) {
+				printf("\nMust first conenct to a chatroom\n");
+				break;
+			}
+
 		case 'v':
-			//TODO - View server config
+			/** Print the servers in the current server's network **/
+			//TODO
+
 		case 'p':
 			Print_menu();
+
 		default:
 			printf("\nINVALID COMMAND\n");
 	}
 }
-
 
 void Print_menu() {
 	
@@ -149,11 +180,11 @@ int valid(int line_number)
 
 void Print_messages()
 {
-	printf("\nRoom :%c\n", chatroom);
+	printf("\nRoom :%s\n", chatroom);
 	printf("\nAttendees: ------------\n");
 	for(int i = 0; i < 25; i++)
 	{
-		printf(messages_to_show[(min_message_shown+i)%25];
+		printf(messages_to_show[(min_message_shown+i)%25]);
 	}
 
 }
