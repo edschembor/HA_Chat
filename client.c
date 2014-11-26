@@ -132,15 +132,17 @@ int main()
 
 		case 'h':
 			/** Print the entire chatroom's history stored on the server **/
-			//TODO
 			if(!in_chatroom) {
 				printf("\nMust first conenct to a chatroom\n");
 				break;
 			}
+			//Send request to the server
+			//When receive things, just print them on the screen - 
+			//should be in order since only one server is sending
 
 		case 'v':
 			/** Print the servers in the current server's network **/
-			//TODO
+			//Send request to the server
 
 		case 'p':
 			Print_menu();

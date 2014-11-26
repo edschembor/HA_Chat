@@ -25,6 +25,7 @@ int Is_Max(int[]);
 int Min_Val(int[]);
 void Send_All_Messages();
 void Send_Recent_Twenty_Five();
+void Clear_Updates();
 
 /** Global Variables **/
 static int       machine_index;
@@ -91,6 +92,8 @@ static void Handle_messages()
 			//Compare timestamp w/ yours
 			//Increase entropy vector
 			//TODO
+			//Multicast the update to all servers - INFINITE LOOP
+			//Only multicast updates if from a client group
 		}
 		else if(received_update.type == 1) {
 			//Perform the like update
@@ -98,20 +101,25 @@ static void Handle_messages()
 			//Compare timestamp w/ yours
 			//Increase entropy vector
 			//TODO
+			//Multicast the update to all servers
 		}
 		else if(received_update.type == 0) {
 			//Perform the new message update
 			//Put in updates array
 			//Increase entropy vector
 			//TODO
+			//Multicast the update to all servers
 		}
 		else if(received_update.type == 2) {
 			//If all have been received, send out updates if you are the max
 			//TODO: Deal with mid partition - ie) look for membership change
 			entropy_received++;
+			//TODO: update matrix based on new vector
 			/*if(entropy_received = num in group) {
 				Send_Merge_Updates();
 			}*/
+			//TODO: update local vector based on matrix
+			Clear_Updates();
 		}
 			
 	}else if( Is_membership_mess( service_type )) {
@@ -119,10 +127,12 @@ static void Handle_messages()
 		//Check if it was an update from the server group
 		if(target_groups[0] == SERVER_GROUP_NAME) {
 			//If it was an addition, merge
+			if(Is_caused_join_mess(servvice_type)) {
 				//Send your anti-entropy vector
-				//SP_multicast(Mbox, AGREED_MESS, group, 1, MAX_MESSLEN, 
-				//	(char *) entropy_matrix[machine_index]);
+				SP_multicast(Mbox, AGREED_MESS, group, 1, MAX_MESSLEN, 
+					(char *) entropy_matrix[machine_index]);
 				entropy_received = 0;
+			}
 		}
 
 		//Check if it was an update from a chatroom group
@@ -130,6 +140,7 @@ static void Handle_messages()
 		for (int i = 0; i < 0; i++) {
 			if(target_groups[0] == "Test") {
 				//Update your users list
+				//Multicast the update to all servers if from client
 				//TODO
 			}
 		}
@@ -138,19 +149,14 @@ static void Handle_messages()
 
 void Send_Merge_Updates()
 {
-	/** Remove unnecessary updates  **/
-	//TODO
-
 	/** Send necessary updates **/
-	/*for(int i = 0; i < NUM_SERVERS; i++) {
-	 *		if(isMax(entropy_matrix[i]) {
-	 *			for(int j = 0; j < NUM_SERVERS; j++) {
-	 *				//Send out the ones you have
-	 *			}
-	 *		}
-	 * }
-	 *
-	 */
+	for(int i = 0; i < NUM_SERVERS; i++) {
+		if(isMax(entropy_matrix[i])) {
+	 		for(int j = 0; j < NUM_SERVERS; j++) {
+	 			//Send out the ones you have
+	 		}
+	 	}
+	}
 }
 
 int Is_Max(int vector[])
@@ -166,9 +172,7 @@ int Is_Max(int vector[])
 				return 0;
 		}
 	}
-	
 	return 1;
-
 }
 
 int Min_Val(int vector[])
@@ -188,6 +192,11 @@ void Send_All_Messages()
 }
 
 void Send_Recent_TwentyFive()
+{
+	//TODO
+}
+
+void Clear_Updates()
 {
 	//TODO
 }
