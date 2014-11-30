@@ -37,114 +37,23 @@ typedef struct chatroom_node {
 } chatroom_node;
 
 
+/*void print_chatrooms();
+void print_messages(char * room);
+void print_likes(char * room, lamport_timestamp ts);
+*/
+
 /** Method declarations **/
 int add_chatroom(char * new_name);
 int add_message(char * new_mess, char * room_name, lamport_timestamp ts);
-int add_like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts, char * room);
-void print_chatrooms();
-void print_messages(char * room);
-void print_likes(char * room, lamport_timestamp ts);
+int like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts, char * room);
+
+int remove_chatroom(char * name);
+int remove_message(char * room_name, lamport_timestamp ts);
+int unlike(char * user, lamport_timestamp mess_ts, char * room);
 
 struct chatroom_node * chatroom_head;
 
-//TEST METHODS
-int main() {
-    lamport_timestamp ts;
-    ts.server_index = 1;
-    ts.timestamp = 1;
-    add_message("hia", "room1", ts);
-    ts.timestamp = 3;
-    add_message("hib", "room1", ts);
-    ts.timestamp = 2;
-    add_message("hic", "room1", ts);
-    ts.timestamp = 5;
-    add_message("hid", "room1", ts);
-    print_chatrooms();
-    print_messages("room1");
-
-    ts.server_index = 2;
-    ts.timestamp = 1;
-    add_message("byea", "room2", ts);
-    ts.timestamp = 3;
-    add_message("byeb", "room2", ts);
-    ts.timestamp = 2;
-    add_message("byec", "room2", ts);
-    ts.timestamp = 5;
-    add_message("byed", "room2", ts);
-    print_chatrooms();
-    print_messages("room2");
-
-
-    lamport_timestamp new_ts;
-    new_ts.server_index = 1;
-    new_ts.timestamp = 1;
-    ts.timestamp = 3;
-    add_like("jan", new_ts, ts, "room2");
-    new_ts.timestamp++;
-    add_like("jan", new_ts, ts, "room2");
-    new_ts.timestamp++;
-    add_like("jan1", new_ts, ts, "room2");
-    new_ts.timestamp++;
-    add_like("jan2", new_ts, ts, "room2");
-    new_ts.timestamp++;
-    add_like("jan3", new_ts, ts, "room2");
-    new_ts.timestamp++;
-    add_like("jan4", new_ts, ts, "room2");
-    new_ts.timestamp = 8;
-    add_like("jan5", new_ts, ts, "room2");
-    new_ts.timestamp = 7;
-    add_like("jan6", new_ts, ts, "room2");
-    print_likes("room2", ts);
-    return 0;
-}
-
-void print_chatrooms() {
-    chatroom_node * curr = chatroom_head;
-    printf("\n[");
-    while (curr != NULL) {
-        printf("%s, ", curr->chatroom_name);
-        curr = curr->next;
-    }
-    printf("]\n");
-}
-
-void print_messages(char * room) {
-    chatroom_node * temp = chatroom_head;
-    while (strcmp(temp->chatroom_name, room) != 0) {
-        temp = temp->next;
-    }
-    message_node * curr = temp->mess_head;
-    printf("\n[");
-    while (curr != NULL) {
-        printf("timestamp: %d -- message: %s, ", (curr->timestamp * 10) + (curr->server_index), curr->message);
-        curr = curr->next;
-    }
-    printf("]\n");
-}
-
-
-void print_likes(char * room, lamport_timestamp ts) {
-    chatroom_node * temp = chatroom_head;
-    while (strcmp(temp->chatroom_name, room) != 0) {
-        temp = temp->next;
-    }
-    message_node * curr_mess = temp->mess_head;
-    int lamport = (10 * ts.timestamp) + (ts.server_index);
-    int mess_lam = (10 * curr_mess->timestamp) + (curr_mess->server_index);
-    while (lamport != mess_lam) {
-        curr_mess = curr_mess->next;
-        mess_lam = (10 * curr_mess->timestamp) + (curr_mess->server_index);
-    }
-
-    like_node * curr_like = curr_mess->like_head;
-    printf("\nMessage Timestamp: %d\nLikes:\n-----------------\n", lamport);
-    printf("[");
-    while (curr_like != NULL) {
-        printf("timestamp: %d -- user: %s, ", (curr_like->timestamp * 10) + (curr_like->server_index), curr_like->username);
-        curr_like = curr_like->next;
-    }
-    printf("]\n");
-}
+int main(void) {return 0;}
 
 int add_chatroom(char * new_name) {
     //create chatroom to add
@@ -249,7 +158,7 @@ int add_message(char * new_mess, char * room_name, lamport_timestamp ts) {
 
 }
 
-int add_like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts, char * room) {
+int like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts, char * room) {
     /*if chatroom list doesn't exist, return 0*/
     if (chatroom_head == NULL) {
         return 0;
@@ -340,6 +249,177 @@ int add_like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts, char 
     to_add->next = curr_like;
     prev_like->next = to_add;
     return 1;
-
-
 }
+
+int remove_chatroom(char * name) {
+    chatroom_node * head = chatroom_head;
+    chatroom_node * to_remove;
+    /**empty list**/
+    if (head == NULL) {
+        return 0;
+    }
+
+    /**check first element**/
+    if (strcmp(head->chatroom_name, name) == 0) {
+        chatroom_head = head->next;
+        head->next = NULL;
+        free(head);
+        return 1;
+    }
+
+    while (head->next != NULL) {
+        if (strcmp(head->next->chatroom_name, name) == 0) {
+            to_remove = head->next;
+            head->next = head->next->next;
+            to_remove->next = NULL;
+            free(to_remove);
+            return 1;
+        }
+        head = head->next;
+    }
+    return 0;
+}
+
+int remove_message(char * room_name, lamport_timestamp ts) {
+    chatroom_node * head = chatroom_head;
+    message_node * curr_mess;
+    message_node * to_remove;
+
+    while (head != NULL) {
+        if (strcmp(head->chatroom_name, room_name) == 0) {
+            curr_mess = head->mess_head;
+            break;
+        }
+        head = head->next;
+    }
+
+    if (head == NULL || curr_mess == NULL) {
+        return 0;
+    }
+
+    //if (curr_mess->timestamp == ts.timestamp && curr_mess->server_index == ts.server_index) {
+    if ((curr_mess->timestamp * 10) + curr_mess->server_index == (ts.timestamp * 10) + ts.server_index) {
+        head->mess_head = head->mess_head->next;
+        curr_mess->next = NULL;
+        free(curr_mess);
+    }
+
+    while (curr_mess->next != NULL) {
+
+        if ((curr_mess->next->timestamp * 10) + curr_mess->next->server_index == (ts.timestamp * 10) + ts.server_index) {
+            to_remove = curr_mess->next;
+            curr_mess->next = curr_mess->next->next;
+            to_remove->next = NULL;
+            free(to_remove);
+            return 1;
+        }
+        curr_mess = curr_mess->next;
+    }
+    return 0;
+}
+
+int unlike(char * user, lamport_timestamp mess_ts, char * room) {
+    chatroom_node * head = chatroom_head;
+    message_node * curr_mess;
+    like_node * curr_like;
+    like_node * to_remove;
+
+    if (head == NULL) {
+        return 0;
+    }
+
+    while (head != NULL) {
+        if (strcmp(head->chatroom_name, room) == 0) {
+            curr_mess = head->mess_head;
+            break;
+        }
+        head = head->next;
+    }
+
+    if (head == NULL || curr_mess == NULL) {
+        return 0;
+    }
+
+    while (curr_mess != NULL) {
+        if (((curr_mess->timestamp * 10) + curr_mess->server_index) == ((mess_ts.timestamp * 10) + mess_ts.server_index)) {
+            curr_like = curr_mess->like_head;
+            break;
+        }
+        curr_mess = curr_mess->next;
+    }
+
+    if (curr_mess == NULL || curr_like == NULL) {
+        return 0;
+    }
+
+    if (strcmp(user, curr_like->username) == 0) {
+        curr_mess->like_head = curr_mess->like_head->next;
+        curr_like->next = NULL;
+        free(curr_like);
+        return 1;
+    }
+
+    while (curr_like->next != NULL) {
+        if(strcmp(curr_like->next->username, user) == 0) {
+            to_remove = curr_like->next;
+            curr_like->next = curr_like->next->next;
+            to_remove->next = NULL;
+            free(to_remove);
+            return 1;
+        }
+        curr_like = curr_like->next;
+    }
+
+    return 0;
+}
+
+/*
+void print_chatrooms() {
+    chatroom_node * curr = chatroom_head;
+    printf("\n[");
+    while (curr != NULL) {
+        printf("%s, ", curr->chatroom_name);
+        curr = curr->next;
+    }
+    printf("]\n");
+}
+
+void print_messages(char * room) {
+    chatroom_node * temp = chatroom_head;
+    while (strcmp(temp->chatroom_name, room) != 0) {
+        temp = temp->next;
+    }
+    message_node * curr = temp->mess_head;
+    printf("\n[");
+    while (curr != NULL) {
+        printf("timestamp: %d -- message: %s, ", (curr->timestamp * 10) + (curr->server_index), curr->message);
+        curr = curr->next;
+    }
+    printf("]\n");
+}
+
+
+void print_likes(char * room, lamport_timestamp ts) {
+    chatroom_node * temp = chatroom_head;
+    while (strcmp(temp->chatroom_name, room) != 0) {
+        temp = temp->next;
+    }
+    message_node * curr_mess = temp->mess_head;
+    int lamport = (10 * ts.timestamp) + (ts.server_index);
+    int mess_lam = (10 * curr_mess->timestamp) + (curr_mess->server_index);
+    while (lamport != mess_lam) {
+        curr_mess = curr_mess->next;
+        mess_lam = (10 * curr_mess->timestamp) + (curr_mess->server_index);
+    }
+
+    like_node * curr_like = curr_mess->like_head;
+    printf("\nMessage Timestamp: %d\nLikes:\n-----------------\n", lamport);
+    printf("[");
+    while (curr_like != NULL) {
+        printf("timestamp: %d -- user: %s, ", (curr_like->timestamp * 10) + (curr_like->server_index), curr_like->username);
+        curr_like = curr_like->next;
+    }
+    printf("]\n");
+}
+*/
+
