@@ -53,8 +53,6 @@ int unlike(char * user, lamport_timestamp mess_ts, char * room);
 
 struct chatroom_node * chatroom_head;
 
-int main(void) {return 0;}
-
 int add_chatroom(char * new_name) {
     //create chatroom to add
     struct chatroom_node * to_add = malloc(sizeof(chatroom_node));

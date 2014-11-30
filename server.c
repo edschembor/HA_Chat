@@ -7,6 +7,7 @@
  *
  */
 
+#include "linked_list.c"
 #include "sp.h"
 #include <stdio.h>
 #include <stdlib.h>

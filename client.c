@@ -7,13 +7,12 @@
  *
  */
 
+#include "linked_list.c"
 #include "sp.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "update.h"
-
-#include "linked_list.c"
 #include "user_list.c"
 
 #define MAX_STRING 80
@@ -76,7 +75,7 @@ int main()
 	{
 		case 'u':
 			/** Sets the user's username **/
-			user = input;
+			//user = input;
 
 		case 'c':
 			/** Connects the client to a server's default group **/
@@ -90,7 +89,7 @@ int main()
 		case 'j':
 			/** Leave the current chatroom and join a new one **/
 			SP_leave(Mbox, chatroom);
-			chatroom = input;
+			//chatroom = input;
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
 			in_chatroom = 1;
@@ -103,7 +102,7 @@ int main()
 			}
 			update_message->type = 0;
 			char* message = input;
-			update_message->message = input;
+			//update_message->message = input;
 			//Send out the update
 			
 		case 'l':
@@ -115,7 +114,7 @@ int main()
 			chosen = atoi(input);
 			if(!valid(chosen)) break;
 			update_message->type = 1;
-			update_message->liked_message_lamport = messages_shown_timestamps[chosen];
+			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
 			//Send out the update
 
 		case 'r':
@@ -127,7 +126,7 @@ int main()
 			chosen = atoi(input);
 			if(!valid(chosen)) break;
 			update_message->type = -1;
-			update_message->liked_message_lamport = messages_shown_timestamps[chosen];
+			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
 			//Send out the udpate
 
 		case 'h':

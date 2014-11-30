@@ -1,5 +1,3 @@
-#include "linked_list.c"
-
 typedef struct update_struct{
 
   int type;
