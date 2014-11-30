@@ -46,18 +46,11 @@ int              entropy_received = 0;
 int              lamport_counter;
 
 struct chatroom_node    head; //The main data structure
-struct update_array     updates[NUM_SERVERS]; //Update struct for each server
+update_array     updates[NUM_SERVERS]; //Update struct for each server
 
 
 int main(int argc, char *argv[])
 {
-	/** Set up updates arrays **/
-	for(int i = 0; i < NUM_SERVERS; i++) {
-		updates[i].start = 0;
-		updates[i].size = 5;
-		updates[i].element_count = 0;
-	}
-
 	/** Set up timeout for Spread connection **/
 	sp_time test_timeout;
 	test_timeout.sec = 5;
@@ -111,16 +104,17 @@ static void Handle_messages()
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
-			update_array[origin-1].array[origin.element_count] = received_update;
-			update_array[origin-1].element_count++;
-			update_array[origin-1] = attempt_double[update_array[origin-1]];
+			int element_count = updates[origin-1].element_count;
+			updates[origin-1].array[element_count] = received_update;
+			updates[origin-1].element_count++;
+			updates[origin-1] = attempt_double(updates[origin-1]);
 
 			//Compare timestamp with yours
 			Compare_Lamport(received_update.lamport.timestamp);
 
 			//Increase entropy vector
 			if(received_update.lamport.timestamp > entropy_matrix[machine_index][origin]) {
-				entropy_matrix[machine_index][origin] = received_udpate.lamport.timestamp;
+				entropy_matrix[machine_index][origin] = received_update.lamport.timestamp;
 			}
 
 			//Multicast the update to all servers if the update was from a client
@@ -135,16 +129,17 @@ static void Handle_messages()
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
-			update_array[origin-1].array[origin.element_count] = received_update;;
-			update_array[origin-1].element_count++:
-			update_array[origin-1] = attempt_double[update_array[origin-1]];
+			int element_count = updates[origin-1].element_count;
+			updates[origin-1].array[element_count] = received_update;;
+			updates[origin-1].element_count++;
+			updates[origin-1] = attempt_double(updates[origin-1]);
 
 			//Compare timestamp with yours
 			Compare_Lamport(received_update.lamport.timestamp);
 
 			//Increase entropy vector	
 			if(received_update.lamport.timestamp > entropy_matrix[machine_index][origin]) {
-				entropy_matrix[machine_index][origin] = received_udpate.lamport.timestamp;
+				entropy_matrix[machine_index][origin] = received_update.lamport.timestamp;
 			}
 
 			//Multicast the update to all servers
@@ -159,16 +154,17 @@ static void Handle_messages()
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
-			update_array[origin-1].array[origin.element_count] = received_update;;
-			update_array[origin-1].element_count++:
-			update_array[origin-1] = attempt_double[update_array[origin-1]];
+			int element_count = updates[origin-1].element_count;
+			updates[origin-1].array[element_count] = received_update;;
+			updates[origin-1].element_count++;
+			updates[origin-1] = attempt_double(updates[origin-1]);
 
 			//Compare timestamp with yours
 			Compare_Lamport(received_update.lamport.timestamp);
 
 			//Increase entropy vector
 			if(received_update.lamport.timestamp > entropy_matrix[machine_index][origin]) {
-				entropy_matrix[machine_index][origin] = received_udpate.lamport.timestamp;
+				entropy_matrix[machine_index][origin] = received_update.lamport.timestamp;
 			}
 
 			//Multicast the update to all servers
@@ -207,12 +203,15 @@ static void Handle_messages()
 		}
 
 		//Check if it was an update from a chatroom group
-		//TODO - fix loop and if
+		//TODO - fix loop and if - Need data structure
 		for (int i = 0; i < 0; i++) {
 			if(strcmp(target_groups[0], "Test") == 0) {
 				//Update your users list
-				//Multicast the update to all servers if from client
-				//TODO
+				//TODO - Need data structure
+				
+				//Multicast the update to all servers
+				SP_multicast(Mbox, AGREED_MESS, server_group, 1, MAX_MESSLEN,
+					(char *) received_update);	
 			}
 		}
 	}
@@ -228,7 +227,7 @@ void Send_Merge_Updates()
 	 			//Send out the ones you have
 				int current = updates[i].start;
 				int s = updates[i].size;
-				while(updates[i][current%s].lamport.timestamp < entropy_matrix[i][j]) {
+				while(updates[i].array[current%s].lamport.timestamp < entropy_matrix[i][j]) {
 					//Send the update to the machines which need it
 					//send(updates[i][current%s]; -> Use private group
 					current++;
@@ -285,8 +284,9 @@ void Clear_Updates()
 		min = Min_Val(entropy_matrix[i]);
 		current = updates[i].start;
 		size = updates[i].size;
-		while(updates[i][current%size].lamport.timestamp < min) {
-			updates[i][current%size] = NULL;
+		while(updates[i].array[current%size].lamport.timestamp < min) {
+			updates[i].array[current%size].type = -2;
+			current++;
 		}
 	}
 }

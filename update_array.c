@@ -1,25 +1,25 @@
 /** Doubling array for storing updates **/
-typedef struct double_array {
-	struct update array[5];
+typedef struct update_array {
+	update array[10];
 	int size;
 	int element_count;
 	int start;
-} double_array;
+} update_array;
 
-double_array attempt_double(double_array da)
+update_array attempt_double(update_array ua)
 {
 	/** Double when the array is full **/
-	if(element_count == size)
+	if(ua.element_count == ua.size)
 	{
-		update[2*da.size] expanded;
-		da.size = 2*da.size;
+		update expanded[2*ua.size];
+		ua.size = 2*ua.size;
 
-		for(int i = 0; i < element_count; i++) {
-			expanded[i] = da.array[i];
+		for(int i = 0; i < ua.element_count; i++) {
+			expanded[i] = ua.array[i];
 		}
 
-		da.array = expanded;
+		ua.array = expanded;
 	}
 
-	return da;
+	return ua;
 }
