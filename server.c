@@ -96,7 +96,6 @@ static void Handle_messages()
 	char    sender[MAX_GROUP_NAME];
 	int16   mess_type;
 	char    mess[1500];
-	static char group[80];
 	
 	/** Receive a message **/
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups,
@@ -217,12 +216,12 @@ static void Handle_messages()
 			//If it was an addition, merge
 			if(Is_caused_join_mess(service_type)) {
 				//Send your anti-entropy vector as an update
-				update entropy_update = malloc(sizeof(update));
+				//update entropy_update = malloc(sizeof(update));
 				for(int i = 0; i < NUM_SERVERS; i++) {
-					entropy_update.vector[i] = entropy_matrix[machine_index-1][i];
+					//entropy_update.vector[i] = entropy_matrix[machine_index-1][i];
 				}
-				SP_multicast(Mbox, AGREED_MESS, group, 1, MAX_MESSLEN, 
-					(char *) &update);
+				//SP_multicast(Mbox, AGREED_MESS, group, 1, MAX_MESSLEN, 
+				//	(char *) &update);
 				entropy_received = 0;
 			}
 
