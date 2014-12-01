@@ -47,7 +47,7 @@ int              entropy_received = 0;
 
 int              lamport_counter;
 
-struct chatroom_node    head; //The main data structure
+//struct chatroom_node    chatroom_head; //The main data structure
 update_array            updates[NUM_SERVERS]; //Update struct for each server
 
 
@@ -109,7 +109,8 @@ static void Handle_messages()
 		/** Check if it is an unlike **/
 		if(received_update.type == -1) {
 			//Perform the unlike update on linked list
-			//TODO - Need data structure
+			//int performed = unlike(received_update.user, received_update.liked_message_lamp, 
+			//	target_groups[0]);
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -136,7 +137,8 @@ static void Handle_messages()
 		/** Check if it is a like  **/
 		else if(received_update.type == 1) {
 			//Perform the like update
-			//TODO - Need data structure
+			//int performed = like(received_update.user, received_update.lamport, 
+			//	received_update.liked_message_lamp, target_groups[0]);
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -163,7 +165,8 @@ static void Handle_messages()
 		/** Check if it is a chat message **/
 		else if(received_update.type == 0) {
 			//Perform the new message update
-			//TODO - Need data structure
+			//int performed = add_message(received_update.message, target_groups[0], 
+			//	received_udpate.lamport);
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -287,20 +290,62 @@ int Min_Val(int vector[])
 	return min;
 }
 
-void Send_All_Messages()
+void Send_All_Messages(char *room_name)
 {
 	/** Sends all the messages it has from a particular chatroom to a specific client
 	 * connected to the server and in that chatroom **/
 	
-	//TODO - Need data structure
+	struct chatroom_node * curr_room = chatroom_head;
+	struct message_node * curr_mess;
+
+	/** Look for correct chatroom **/
+	while(strcmp(curr_room->chatroom_name, room_name) != 0) {
+		curr_room = curr_room->next;
+		//TODO: What if room not in structure?
+	}
+
+	curr_mess = curr_room->mess_head;
+	while(curr_mess->next != NULL) {
+		//Multicast the message to the chatroom group
+		//TODO
+	}
 }
 
-void Send_Recent_TwentyFive()
+void Send_Recent_TwentyFive(char *room_name)
 {
 	/** Sends the most recent 25 messages it has from a particular chatroom to a specific
 	 * client connected to the server and in that chatroom **/
 
-	//TODO - Need data structure
+	struct chatroom_node * curr_room = chatroom_head;
+	struct message_node * curr_mess;
+	struct message_node * curr_mess_end;
+
+	/** Look for the correct chatroom **/
+	while(strcmp(curr_room->chatroom_name, room_name) != 0) {
+		curr_room = curr_room->next;
+	}
+
+	curr_mess = curr_room->mess_head;
+	curr_mess_end = curr_room->mess_head;
+
+	/** Move curr_mess_end 25 spaces ahead of curr_mess **/
+	int end = 0;
+	while(curr_mess_end->next != NULL && end < 25) {
+		curr_mess_end = curr_mess_end->next;
+		end++;
+	}
+
+	/** Move both pointers so we have one at 25th to last and one at last **/
+	while(curr_mess_end->next != NULL) {
+		curr_mess_end = curr_mess_end->next;
+		curr_mess = curr_mess->next;
+	}
+
+	/** Send the last 25 messages **/
+	while(curr_mess->next != NULL) {
+		//Multicast the message to the chatroom group
+		//TODO
+	}
 }
 
 void Clear_Updates()
