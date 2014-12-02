@@ -78,9 +78,9 @@ int main(int argc, char *argv[])
 	/** Join the server group **/
 	ret = SP_join(Mbox, server_group);
 	if(ret < 0) SP_error(ret);
+	printf("\nDebug> Server group joined: %s\n", server_group);
 
 	/** Join the default client group **/
-	//TODO: FIX
 	strcpy(chatroom, "default");
 	char *machine_index_str;
 	sprintf(machine_index_str, "%d", machine_index);
@@ -119,7 +119,7 @@ static void Handle_messages()
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups,
 		target_groups, &mess_type, &endian_mismatch, sizeof(update), mess);
 
-	printf("\nI GOT A MESSAGE! WOOOOOOO0000000OOO!\n");
+	printf("\nDebug> I GOT A MESSAGE!\n");
 	
 	if(Is_regular_mess( service_type )) {
 		//Cast the message to an update
@@ -130,7 +130,7 @@ static void Handle_messages()
 			//Perform the unlike update on linked list
 			unlike(received_update.user, received_update.liked_message_lamp, 
 				target_groups[0]);
-			//TODO: Error check - ???? - Do I need to?
+			//TODO: Error check return value - ???? - Do I need to?
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -154,7 +154,7 @@ static void Handle_messages()
 			}
 		}
 
-		/** Check if it is a like  **/
+		/** Check if it is a like **/
 		else if(received_update.type == 1) {
 			//Perform the like update
 			like(received_update.user, received_update.lamport, 
@@ -236,11 +236,26 @@ static void Handle_messages()
 
 			Clear_Updates();
 		}
+
+		/** Check if its a complete history request **/
+		else if(received_update.type == 3) {
+			//Send the complete history to the client which requested it
+			//target_group[0] won't work here
+			//Send_All_Messages(char target_group[0], char *client_private_group);
+		}
+
+		/** Check if its a network view request **/
+		else if(received_update.type == 4) {
+			//Send the network view to the client which requested it
+		}
 			
 	}else if( Is_membership_mess( service_type )) {
 		
 		/** Check if it was an update from the server group **/
-		if(strcmp(target_groups[0], SERVER_GROUP_NAME) == 0) {
+		if(strcmp(sender, SERVER_GROUP_NAME) == 0) {
+			printf("\nDebug> Membership message from the server group\n");
+			printf("\nDebug> Group from = %s\n", sender);
+
 			//If it was an addition, merge
 			if(Is_caused_join_mess(service_type)) {
 				//Send your anti-entropy vector as an update
@@ -255,12 +270,16 @@ static void Handle_messages()
 
 		/** The update came from a chatroom group **/
 		}else{
+			printf("\nDebug> Membership message from a chatroom group\n");
+			printf("\nDebug> Group From = %s\n", sender);
+			
 			//Update your users list
-			//TODO - Need data structure
+			//TODO - Need data structure - AFTER WORKING
 				
 			//Multicast the update to all servers
 			//TODO - Create a "<user> joined" or "<user> left" update
 			//TODO - Multicast the update
+			//TODO - AFTER WORKING
 		}
 	}
 }
@@ -400,4 +419,11 @@ void Compare_Lamport(int lamport)
 	if(lamport > lamport_counter) {
 		lamport_counter = lamport;
 	}
+}
+
+void Send_Server_View()
+{
+	/** Sends a view of the chat servers in the current server's network to the client 
+	 *  who requested the view**/
+	//TODO
 }
