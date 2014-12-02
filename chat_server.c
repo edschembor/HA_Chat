@@ -81,8 +81,9 @@ int main(int argc, char *argv[])
 
 	/** Join the default client group **/
 	//TODO: FIX
-	strcpy(chatroom, "default1");
-	//strcpy(chatroom, machine_index);
+	strcpy(chatroom, "default");
+	char *machine_index_str;
+	strcat(chatroom, machine_index);
 	ret = SP_join(Mbox, chatroom);
 	if(ret < 0) SP_error(ret);
 
