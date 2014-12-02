@@ -16,6 +16,7 @@
 
 #define MAX_STRING 80
 #define SPREAD_NAME "10030"
+#define MAX_MEMBERS 100
 
 /** Method Declarations **/
 void Print_menu();
@@ -41,6 +42,7 @@ static char       Private_group[MAX_STRING];
 static char       User[MAX_STRING];
 static mailbox    Mbox;
 int               ret;
+int               num_groups;
 
 char              option; //The action the user wants to take
 char              input[MAX_STRING];
@@ -167,7 +169,7 @@ static void User_command()
 				break;
 			}
 			update_message->type = 0;
-			//TODO: update_message->message = input;
+			//update_message->message = input;
 			//TODO: Send out the update to the server
 			//NEED SERVER PRIVATE GROUP
 			break;
@@ -249,6 +251,35 @@ void Print_messages()
 
 static void Read_message()
 {
+	/** Initialize locals **/
+	char      target_groups[MAX_MEMBERS][MAX_GROUP_NAME];
+	update    received_update;
+	int       endian_mismatch;
+	int       service_type;
+	char      sender[MAX_GROUP_NAME];
+	int16     mess_type;
+	char      mess[1500];
+
+	/** Receive a message **/
+	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups, target_groups,
+		&mess_type, &endian_mismatch, sizeof(update), mess);
+	
+	printf("\nCLIENT GOT A MESSAGE\n");
+
+	if(Is_regular_mess( service_type )) {
+		//Cast the message to an update
+		received_update = *((update *) mess);
+		
+		//TODO: Receive 25 recent
+		//TODO: Receive all
+		//TODO: Receive users updates
+		//Since they can only be sent from one server, we know what we will be receiving
+		//before after we send a request to the server, so our actions here can be 
+		//based on that. So, if we requested history, we expect that. If we receive 
+		//something else, it is either a user update or a set of 25 messages
+		
+	}
+
 	//TODO: Receive 25 recent
 	//TODO: Receive all
 	//TODO: Receive users updates
