@@ -7,7 +7,7 @@
  *
  */
 
-#include "linked_list.c"
+#include "data_structure.c"
 #include "sp.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,8 +26,8 @@ static void Handle_messages();
 void Send_Merge_Updates();
 int Is_Max(int[]);
 int Min_Val(int[]);
-void Send_All_Messages();
-void Send_Recent_Twenty_Five();
+void Send_All_Messages(char *, char *);
+void Send_Recent_TwentyFive(char *);
 void Clear_Updates();
 void Compare_Lamport();
 
@@ -53,6 +53,13 @@ update_array            updates[NUM_SERVERS]; //Update struct for each server
 
 int main(int argc, char *argv[])
 {
+	/** Check usage and set command line variables **/
+	if(argc != 2) {
+		printf("\nUsage: server <server_index>\n");
+		exit(0);
+	}
+	machine_index = atoi(argv[1]);
+
 	/** Set up timeout for Spread connection **/
 	sp_time test_timeout;
 	test_timeout.sec = 5;
@@ -101,6 +108,8 @@ static void Handle_messages()
 	/** Receive a message **/
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups,
 		target_groups, &mess_type, &endian_mismatch, sizeof(update), mess);
+
+	printf("\nI GOT A MESSAGE! WOOOOOOO0000000OOO!\n");
 	
 	if(Is_regular_mess( service_type )) {
 		//Cast the message to an update
@@ -109,8 +118,9 @@ static void Handle_messages()
 		/** Check if it is an unlike **/
 		if(received_update.type == -1) {
 			//Perform the unlike update on linked list
-			//int performed = unlike(received_update.user, received_update.liked_message_lamp, 
-			//	target_groups[0]);
+			unlike(received_update.user, received_update.liked_message_lamp, 
+				target_groups[0]);
+			//TODO: Error check - ???? - Do I need to?
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -137,8 +147,8 @@ static void Handle_messages()
 		/** Check if it is a like  **/
 		else if(received_update.type == 1) {
 			//Perform the like update
-			//int performed = like(received_update.user, received_update.lamport, 
-			//	received_update.liked_message_lamp, target_groups[0]);
+			like(received_update.user, received_update.lamport, 
+				received_update.liked_message_lamp, target_groups[0]);
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -165,8 +175,8 @@ static void Handle_messages()
 		/** Check if it is a chat message **/
 		else if(received_update.type == 0) {
 			//Perform the new message update
-			//int performed = add_message(received_update.message, target_groups[0], 
-			//	received_udpate.lamport);
+			add_message(received_update.message, target_groups[0], 
+				received_update.lamport);
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -188,6 +198,10 @@ static void Handle_messages()
 				SP_multicast(Mbox, AGREED_MESS, server_group, 1, MAX_MESSLEN,
 					(char *) &received_update);
 			}
+
+			//Multicast the new data to all clients in the chatroom where the 
+			//update occurred so they have up to date views
+			Send_Recent_TwentyFive(target_groups[0]);
 		}
 
 		/** Check if it is an entropy vector for merging **/
@@ -290,7 +304,7 @@ int Min_Val(int vector[])
 	return min;
 }
 
-void Send_All_Messages(char *room_name)
+void Send_All_Messages(char *room_name, char *client_private_group)
 {
 	/** Sends all the messages it has from a particular chatroom to a specific client
 	 * connected to the server and in that chatroom **/
@@ -301,13 +315,15 @@ void Send_All_Messages(char *room_name)
 	/** Look for correct chatroom **/
 	while(strcmp(curr_room->chatroom_name, room_name) != 0) {
 		curr_room = curr_room->next;
-		//TODO: What if room not in structure?
+		//What if room not in group??? - Still works?
 	}
 
 	curr_mess = curr_room->mess_head;
 	while(curr_mess->next != NULL) {
-		//Multicast the message to the chatroom group
-		//TODO
+		//Multicast the message to the client which requested the messages
+		SP_multicast(Mbox, AGREED_MESS, client_private_group, 1, MAX_MESSLEN,
+			(char *) &curr_mess);
+		
 	}
 }
 
@@ -344,7 +360,9 @@ void Send_Recent_TwentyFive(char *room_name)
 	/** Send the last 25 messages **/
 	while(curr_mess->next != NULL) {
 		//Multicast the message to the chatroom group
-		//TODO
+		SP_multicast(Mbox, AGREED_MESS, room_name, 1, MAX_MESSLEN, 
+			(char *) &curr_mess);
+		curr_mess = curr_mess->next;
 	}
 }
 

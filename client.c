@@ -7,13 +7,12 @@
  *
  */
 
-#include "linked_list.c"
+#include "data_structure.c"
 #include "sp.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "update.h"
-#include "user_list.c"
 
 #define MAX_STRING 80
 #define SPREAD_NAME "10030"
@@ -24,8 +23,11 @@ int  valid(int);
 void Print_messages();
 
 /** Global Variables **/
-char              user[MAX_STRING];
-char              chatroom[MAX_STRING];
+/*char              user[MAX_STRING];
+char              chatroom[MAX_STRING];*/
+char              *user;
+char              *chatroom;
+
 int               server;
 int               in_chatroom = 0; //1 if user has chosen a chatroom
 user_node         head; //linked list of users in connected chatroom
@@ -37,7 +39,7 @@ static mailbox    Mbox;
 int               ret;
 
 char              option; //The action the user wants to take
-char              *input;
+char              input[MAX_STRING];
 
 int               min_message_shown;
 char              messages_to_show[25][80];
@@ -70,12 +72,14 @@ int main()
 	Print_menu();
 
 	/** Deal with User Input **/
-	scanf("%c %80c", &option, input);
+	scanf("%c %79s", &option, input);
 	switch(option)
 	{
 		case 'u':
 			/** Sets the user's username **/
-			//user = input;
+			user = input;
+			printf("\nYour new username is \'%s\'\n", user);
+			printf("\nHere\n");
 
 		case 'c':
 			/** Connects the client to a server's default group **/
@@ -89,7 +93,7 @@ int main()
 		case 'j':
 			/** Leave the current chatroom and join a new one **/
 			SP_leave(Mbox, chatroom);
-			//chatroom = input;
+			chatroom = input;
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
 			in_chatroom = 1;
@@ -101,9 +105,8 @@ int main()
 				break;
 			}
 			update_message->type = 0;
-			char* message = input;
 			//update_message->message = input;
-			//Send out the update
+			//TODO: Send out the update
 			
 		case 'l':
 			/** Create the like update and send it to the chatroom Spread group **/
@@ -115,7 +118,7 @@ int main()
 			if(!valid(chosen)) break;
 			update_message->type = 1;
 			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
-			//Send out the update
+			//TODO: Send out the update
 
 		case 'r':
 			/** Create the unlike update and send it to the chatroom Spread group **/
@@ -127,7 +130,7 @@ int main()
 			if(!valid(chosen)) break;
 			update_message->type = -1;
 			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
-			//Send out the udpate
+			//TODO: Send out the udpate
 
 		case 'h':
 			/** Print the entire chatroom's history stored on the server **/
@@ -135,19 +138,21 @@ int main()
 				printf("\nMust first conenct to a chatroom\n");
 				break;
 			}
-			//Send request to the server
-			//When receive things, just print them on the screen - 
-			//should be in order since only one server is sending
+			//TODO: Send request to the server
+			//TODO: When receive things, just print them on the screen - 
+			//TODO: Should be in order since only one server is sending
 
 		case 'v':
 			/** Print the servers in the current server's network **/
-			//Send request to the server
+			//TODO: Send request to the server
 
 		case 'p':
 			Print_menu();
 
 		default:
 			printf("\nINVALID COMMAND\n");
+
+		printf("\nOUT OF CASE\n");
 	}
 }
 
@@ -156,15 +161,16 @@ void Print_menu() {
 	printf("\n =====================");
 	printf("\n |     USER MENU     |");
 	printf("\n =====================");
-	printf("\n   u [name]         - Login with a user name");
-	printf("\n   c [sever index]  - Connect to the specified server");
-	printf("\n   j [room name]    - Join a chat room");
-	printf("\n   a [message]      - Add a message to the chat");
-	printf("\n   l [line number]  - Like the message at the line number");
-	printf("\n   r [line number]  - Unlike the message at the line number");
-	printf("\n   h                - Vuew the entire chat history");
-	printf("\n   v                - View the servers in the current server's network");
-	printf("\n   p                - Print this menu again");
+	printf("\nu [name]         - Login with a user name");
+	printf("\nc [sever index]  - Connect to the specified server");
+	printf("\nj [room name]    - Join a chat room");
+	printf("\na [message]      - Add a message to the chat");
+	printf("\nl [line number]  - Like the message at the line number");
+	printf("\nr [line number]  - Unlike the message at the line number");
+	printf("\nh                - Vuew the entire chat history");
+	printf("\nv                - View the servers in the current server's network");
+	printf("\np                - Print this menu again");
+	printf("\n---------------------------------------------------------------------\n");
 	printf("\n");
 
 }

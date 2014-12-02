@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "user_list.c"
 
 #define MAX_MESSAGE_SIZE 80
 #define MAX_USERNAME_SIZE 20
@@ -32,10 +33,10 @@ typedef struct message_node {
 /** Used for the chatroom list which is held by each server **/
 typedef struct chatroom_node {
     char * chatroom_name;
+	struct user_node * user_list_head; //The linked list of users currently in the chatroom
     struct message_node * mess_head;
     struct chatroom_node * next;
 } chatroom_node;
-
 
 /*void print_chatrooms();
 void print_messages(char * room);
