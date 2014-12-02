@@ -21,6 +21,8 @@
 void Print_menu();
 int  valid(int);
 void Print_messages();
+static void User_command();
+static void Read_message();
 
 /** Global Variables **/
 /*char              user[MAX_STRING];
@@ -28,8 +30,10 @@ char              chatroom[MAX_STRING];*/
 char              *user;
 char              *chatroom;
 
-int               server;
+int               server = 0;
 int               in_chatroom = 0; //1 if user has chosen a chatroom
+int               user_name_set = 0;
+
 user_node         head; //linked list of users in connected chatroom
 
 static char       Spread_name[MAX_STRING] = SPREAD_NAME;
@@ -68,35 +72,93 @@ int main()
 
 	/** All necessary mallocs **/
 	update_message = malloc(sizeof(update));
+	chatroom = (char *) malloc(MAX_STRING);
 
+	/** Show the user the menu **/
 	Print_menu();
 
+	/** Set up the Spread event handling **/
+	E_init();
+
+	E_attach_fd(0, READ_FD, User_command, 0, NULL, LOW_PRIORITY);
+	E_attach_fd(Mbox, READ_FD, Read_message, 0, NULL, HIGH_PRIORITY);
+
+	printf("\nUser> ");
+	fflush(stdout);
+
+	E_handle_events();
+
+	return( 0 );
+}
+
+void Print_menu() 
+{	
+	printf("\n=====================");
+	printf("\n|     USER MENU     |");
+	printf("\n=====================");
+	printf("\nu [name]         - Login with a user name");
+	printf("\nc [sever index]  - Connect to the specified server");
+	printf("\nj [room name]    - Join a chat room");
+	printf("\na [message]      - Add a message to the chat");
+	printf("\nl [line number]  - Like the message at the line number");
+	printf("\nr [line number]  - Unlike the message at the line number");
+	printf("\nh                - View the entire chat history");
+	printf("\nv                - View the servers in the current server's network");
+	printf("\np                - Print this menu again");
+	printf("\n---------------------------------------------------------------------\n");
+}
+
+static void User_command()
+{
+	int chosen;
+	
 	/** Deal with User Input **/
 	scanf("%c %79s", &option, input);
+	printf("\nOPTION: %c", option);
 	switch(option)
 	{
 		case 'u':
 			/** Sets the user's username **/
 			user = input;
 			printf("\nYour new username is \'%s\'\n", user);
-			printf("\nHere\n");
+			user_name_set = 1;
+			break;
 
 		case 'c':
 			/** Connects the client to a server's default group **/
-			strcpy(chatroom, "default");
-			char* server_number = input;
-			strcpy(chatroom, server_number);
+			
+			/** Check that a user name has been set **/
+			/*if(!user_name_set) {
+				printf("\nPlease set your username first\n");
+				break;
+			}*/
+
+			//TODO: Connect to correct server
+			strcpy(chatroom, "default1");
+			//char* server_number = input;
+			//strcpy(chatroom, server_number);
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
 			server = atoi(input); //For connection
+			printf("\nConnected to server %s\n", input);
+			break;
 
 		case 'j':
 			/** Leave the current chatroom and join a new one **/
+			printf("\nJoining a chatroom\n");
+
+			/** Check that the client is connected to a server **/
+			if(server == 0) {
+				printf("\nPlease connect to a server first.\n");
+				break;
+			}
 			SP_leave(Mbox, chatroom);
 			chatroom = input;
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
 			in_chatroom = 1;
+			printf("\nYour new chatroom is \'%s\'\n", chatroom);
+			break;
 
 		case 'a':
 			/** Create the append update and send it to the chatroom Spread group **/
@@ -105,8 +167,10 @@ int main()
 				break;
 			}
 			update_message->type = 0;
-			//update_message->message = input;
-			//TODO: Send out the update
+			//TODO: update_message->message = input;
+			//TODO: Send out the update to the server
+			//NEED SERVER PRIVATE GROUP
+			break;
 			
 		case 'l':
 			/** Create the like update and send it to the chatroom Spread group **/
@@ -118,7 +182,8 @@ int main()
 			if(!valid(chosen)) break;
 			update_message->type = 1;
 			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
-			//TODO: Send out the update
+			//TODO: Send out the update to the server
+			break;
 
 		case 'r':
 			/** Create the unlike update and send it to the chatroom Spread group **/
@@ -130,7 +195,8 @@ int main()
 			if(!valid(chosen)) break;
 			update_message->type = -1;
 			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
-			//TODO: Send out the udpate
+			//TODO: Send out the udpate to the server
+			break;
 
 		case 'h':
 			/** Print the entire chatroom's history stored on the server **/
@@ -141,38 +207,24 @@ int main()
 			//TODO: Send request to the server
 			//TODO: When receive things, just print them on the screen - 
 			//TODO: Should be in order since only one server is sending
+			break;
 
 		case 'v':
 			/** Print the servers in the current server's network **/
 			//TODO: Send request to the server
+			break;
 
 		case 'p':
 			Print_menu();
+			break;
 
 		default:
 			printf("\nINVALID COMMAND\n");
-
-		printf("\nOUT OF CASE\n");
+			break;
 	}
-}
 
-void Print_menu() {
-	
-	printf("\n =====================");
-	printf("\n |     USER MENU     |");
-	printf("\n =====================");
-	printf("\nu [name]         - Login with a user name");
-	printf("\nc [sever index]  - Connect to the specified server");
-	printf("\nj [room name]    - Join a chat room");
-	printf("\na [message]      - Add a message to the chat");
-	printf("\nl [line number]  - Like the message at the line number");
-	printf("\nr [line number]  - Unlike the message at the line number");
-	printf("\nh                - Vuew the entire chat history");
-	printf("\nv                - View the servers in the current server's network");
-	printf("\np                - Print this menu again");
-	printf("\n---------------------------------------------------------------------\n");
-	printf("\n");
-
+	printf("\nUser> ");
+	fflush(stdout);
 }
 
 int valid(int line_number)
@@ -193,8 +245,11 @@ void Print_messages()
 	{
 		printf(messages_to_show[(min_message_shown+i)%25]);
 	}
-
 }
 
-
-
+static void Read_message()
+{
+	//TODO: Receive 25 recent
+	//TODO: Receive all
+	//TODO: Receive users updates
+}

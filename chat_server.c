@@ -41,6 +41,7 @@ static char      User[MAX_NAME] = "1";
 static mailbox   Mbox;
 int              ret;
 int              num_groups;
+char             chatroom[MAX_NAME];
 
 int              entropy_matrix[NUM_SERVERS][NUM_SERVERS];
 int              entropy_received = 0;
@@ -76,6 +77,13 @@ int main(int argc, char *argv[])
 
 	/** Join the server group **/
 	ret = SP_join(Mbox, server_group);
+	if(ret < 0) SP_error(ret);
+
+	/** Join the default client group **/
+	//TODO: FIX
+	strcpy(chatroom, "default1");
+	//strcpy(chatroom, machine_index);
+	ret = SP_join(Mbox, chatroom);
 	if(ret < 0) SP_error(ret);
 
 	/** Initialize the udpate arrays **/
