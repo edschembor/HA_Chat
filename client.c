@@ -136,9 +136,9 @@ static void User_command()
 			}*/
 
 			//TODO: Connect to correct server
-			strcpy(chatroom, "default1");
-			//char* server_number = input;
-			//strcpy(chatroom, server_number);
+			strcpy(chatroom, "default");
+			char* server_number = input;
+			strcat(chatroom, server_number);
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
 			server = atoi(input); //For connection
