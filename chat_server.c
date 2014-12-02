@@ -83,7 +83,8 @@ int main(int argc, char *argv[])
 	//TODO: FIX
 	strcpy(chatroom, "default");
 	char *machine_index_str;
-	strcat(chatroom, machine_index);
+	sprintf(machine_index_str, "%d", machine_index);
+	strcat(chatroom, machine_index_str);
 	ret = SP_join(Mbox, chatroom);
 	if(ret < 0) SP_error(ret);
 
