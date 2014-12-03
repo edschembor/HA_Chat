@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "update.h"
 
 #define MAX_STRING 80
@@ -25,6 +26,7 @@ void Print_messages();
 static void User_command();
 static void Read_message();
 static void Bye();
+int insert(message_node mess);
 
 /** Global Variables **/
 /*char              user[MAX_STRING];
@@ -44,12 +46,13 @@ static char       User[MAX_STRING];
 static mailbox    Mbox;
 int               ret;
 int               num_groups;
+int               capacity; // num elements in messages_to_show
 
 char              option; //The action the user wants to take
 char              input[MAX_STRING];
 
 int               min_message_shown;
-char              messages_to_show[25][80];
+message_node              messages_to_show[25];
 lamport_timestamp messages_shown_timestamps[25];
 
 update            *update_message;
@@ -141,7 +144,6 @@ static void User_command()
 				break;
 			}*/
 
-			//TODO: Connect to correct server
 			strcpy(chatroom, "default");
             sscanf( &command[2], "%s", input );
 			char* server_number = input;
@@ -149,7 +151,7 @@ static void User_command()
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
 			server = atoi(input); //For connection
-			printf("\nConnected to server %s\n", input);
+		    printf("\nConnecting to server %s...\n", input);
 			break;
 
 		case 'j':
@@ -242,120 +244,7 @@ static void User_command()
 			break;
 
     }
-#if 0
-	int chosen;
-	
-	/** Deal with User Input **/
-	scanf("%c %79s", &option, input);
-	printf("\nOPTION: %c", option);
-	switch(option)
-	{
-		case 'u':
-			/** Sets the user's username **/
-			user = input;
-			printf("\nYour new username is \'%s\'\n", user);
-			user_name_set = 1;
-			break;
 
-		case 'c':
-			/** Connects the client to a server's default group **/
-			
-			/** Check that a user name has been set **/
-			/*if(!user_name_set) {
-				printf("\nPlease set your username first\n");
-				break;
-			}*/
-
-			//TODO: Connect to correct server
-			strcpy(chatroom, "default");
-			char* server_number = input;
-			strcat(chatroom, server_number);
-			ret = SP_join(Mbox, chatroom);
-			if(ret < 0) SP_error(ret);
-			server = atoi(input); //For connection
-			printf("\nConnected to server %s\n", input);
-			break;
-
-		case 'j':
-			/** Leave the current chatroom and join a new one **/
-			printf("\nJoining a chatroom\n");
-
-			/** Check that the client is connected to a server **/
-			if(server == 0) {
-				printf("\nPlease connect to a server first.\n");
-				break;
-			}
-			SP_leave(Mbox, chatroom);
-			chatroom = input;
-			ret = SP_join(Mbox, chatroom);
-			if(ret < 0) SP_error(ret);
-			in_chatroom = 1;
-			printf("\nYour new chatroom is \'%s\'\n", chatroom);
-			break;
-
-		case 'a':
-			/** Create the append update and send it to the chatroom Spread group **/
-			if(!in_chatroom) {
-				printf("\nMust first connect to a chatroom\n");
-				break;
-			}
-			update_message->type = 0;
-			//update_message->message = input;
-			//TODO: Send out the update to the server
-			//NEED SERVER PRIVATE GROUP
-			break;
-			
-		case 'l':
-			/** Create the like update and send it to the chatroom Spread group **/
-			if(!in_chatroom) {
-				printf("\nMust first connect to a chatroom\n");
-				break;
-			}
-			chosen = atoi(input);
-			if(!valid(chosen)) break;
-			update_message->type = 1;
-			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
-			//TODO: Send out the update to the server
-			break;
-
-		case 'r':
-			/** Create the unlike update and send it to the chatroom Spread group **/
-			if(!in_chatroom) {
-				printf("\nMust first connect to a chatroom\n");
-				break;
-			}
-			chosen = atoi(input);
-			if(!valid(chosen)) break;
-			update_message->type = -1;
-			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
-			//TODO: Send out the udpate to the server
-			break;
-
-		case 'h':
-			/** Print the entire chatroom's history stored on the server **/
-			if(!in_chatroom) {
-				printf("\nMust first conenct to a chatroom\n");
-				break;
-			}
-			//TODO: Send request to the server
-			//TODO: When receive things, just print them on the screen - 
-			//TODO: Should be in order since only one server is sending
-			break;
-
-		case 'v':
-			/** Print the servers in the current server's network **/
-			//TODO: Send request to the server
-			break;
-
-		case 'p':
-			Print_menu();
-			break;
-
-		default:
-			printf("\nINVALID COMMAND\n");
-			break;
-	}
-#endif
 	printf("\nUser> ");
 	fflush(stdout);
 }
@@ -376,20 +265,21 @@ void Print_messages()
 	printf("\nAttendees: ------------\n");
 	for(int i = 0; i < 25; i++)
 	{
-		printf(messages_to_show[(min_message_shown+i)%25]);
+		printf("\n%s",messages_to_show[(min_message_shown+i)%25].message);
 	}
 }
 
 static void Read_message()
 {
 	/** Initialize locals **/
-	char      target_groups[MAX_MEMBERS][MAX_GROUP_NAME];
-	update    received_update;
-	int       endian_mismatch;
-	int       service_type;
-	char      sender[MAX_GROUP_NAME];
-	int16     mess_type;
-	char      mess[1500];
+	char            target_groups[MAX_MEMBERS][MAX_GROUP_NAME];
+	message_node    received_message;
+	int             endian_mismatch;
+	int             service_type;
+	char            sender[MAX_GROUP_NAME];
+	int16           mess_type;
+	char            mess[1500];
+    int             lamport, smallest_lamport;
 
 	/** Receive a message **/
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups, target_groups,
@@ -399,10 +289,23 @@ static void Read_message()
 
 	if(Is_regular_mess( service_type )) {
 		//Cast the message to an update
-		received_update = *((update *) mess);
-		
-		//TODO: Receive 25 recent
-		//TODO: Receive all
+		received_message = *((message_node *) mess);
+
+        if (capacity == 0) {
+            insert(received_message);
+            return;
+        }
+
+		lamport = (received_message.timestamp * 10) + received_message.server_index;
+        smallest_lamport = (messages_to_show[0].timestamp * 10) + messages_to_show[0].server_index;
+
+        if (lamport > smallest_lamport) {
+            insert(received_message);
+            Print_messages();
+        }
+        else if (lamport < smallest_lamport) {
+            //TODO: history
+        }
 		//TODO: Receive users updates
 		//Since they can only be sent from one server, we know what we will be receiving
 		//before after we send a request to the server, so our actions here can be 
@@ -410,10 +313,48 @@ static void Read_message()
 		//something else, it is either a user update or a set of 25 messages
 		
 	}
-
+    else if (Is_membership_mess( service_type )) {
+        printf("\nCLIENT GOT A MEMBERSHIP MESSAGE\n");
+        if (num_groups <= 1) {
+            printf("\nConnection failed, server is unresponsive\n");
+            SP_leave(Mbox, chatroom);
+        } else {
+            printf("\nConnection successful!\n");
+        }
+    }
+	printf("\nUser> ");
+	fflush(stdout);
 	//TODO: Receive 25 recent
 	//TODO: Receive all
 	//TODO: Receive users updates
+}
+
+int insert(message_node mess) {
+    int i, j;
+    int lamport;
+    int curr_lamport;
+    if (capacity < 25) {
+        messages_to_show[capacity] = mess;
+        capacity++;
+        return 0; //success
+    }
+    lamport = (mess.timestamp * 10) + mess.server_index;
+    for (i = 0; i < capacity; i++) {
+        curr_lamport = (messages_to_show[i].timestamp * 10) + messages_to_show[i].server_index;
+        if (lamport <= curr_lamport) {
+            if (lamport == curr_lamport) {
+                messages_to_show[i] = mess;
+                return 0;
+            }
+            break;   
+        }
+    }
+    //shift values
+    for (j = 0; j < i; j++) {
+        messages_to_show[j] = messages_to_show[j+1];
+    }
+    messages_to_show[j+1] = mess;
+    return 0;
 }
 
 static  void	Bye()
