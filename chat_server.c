@@ -27,9 +27,10 @@ void Send_Merge_Updates();
 int Is_Max(int[]);
 int Min_Val(int[]);
 void Send_All_Messages(char *, char *);
-void Send_Recent_TwentyFive(char *);
+//void Send_Recent_TwentyFive(char *);
 void Clear_Updates();
 void Compare_Lamport();
+void Send_Server_View();
 
 /** Global Variables **/
 static int       machine_index;
@@ -38,6 +39,8 @@ static char      Spread_name[MAX_NAME] = SPREAD_NAME;
 static char      Private_group[MAX_NAME];
 static char      server_group[MAX_NAME] = SERVER_GROUP_NAME;
 static char      User[MAX_NAME] = "1";
+char             current_group[NUM_SERVERS][MAX_GROUP_NAME];
+
 static mailbox   Mbox;
 int              ret;
 int              num_groups;
@@ -48,9 +51,8 @@ int              entropy_received = 0;
 
 int              lamport_counter;
 
-//struct chatroom_node    chatroom_head; //The main data structure
 update_array            updates[NUM_SERVERS]; //Update struct for each server
-
+//Note: The main data structure run in data_structure.c
 
 int main(int argc, char *argv[])
 {
@@ -100,20 +102,20 @@ int main(int argc, char *argv[])
 	E_attach_fd(Mbox, READ_FD, Handle_messages, 0, NULL, HIGH_PRIORITY);
 
 	E_handle_events();
-
 }
 
 static void Handle_messages()
 {
 
 	/** Initialize locals **/
-	char    target_groups[MAX_MEMBERS][MAX_GROUP_NAME];
-	update  received_update;
-	int     endian_mismatch;
-	int     service_type;
-	char    sender[MAX_GROUP_NAME];
-	int16   mess_type;
-	char    mess[1500];
+	char          target_groups[MAX_MEMBERS][MAX_GROUP_NAME];
+	update        received_update;
+	int           endian_mismatch;
+	int           service_type;
+	char          sender[MAX_GROUP_NAME];
+	int16         mess_type;
+	char          mess[1500];
+	message_node  *changed_message;
 	
 	/** Receive a message **/
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups,
@@ -128,9 +130,8 @@ static void Handle_messages()
 		/** Check if it is an unlike **/
 		if(received_update.type == -1) {
 			//Perform the unlike update on linked list
-			unlike(received_update.user, received_update.liked_message_lamp, 
+			changed_message = unlike(received_update.user, received_update.liked_message_lamp, 
 				target_groups[0]);
-			//TODO: Error check return value - ???? - Do I need to?
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -152,12 +153,16 @@ static void Handle_messages()
 				SP_multicast(Mbox, AGREED_MESS, server_group, 1, MAX_MESSLEN,
 					(char *) &received_update);
 			}
+
+			//Send the updated line to the clients in the chatroom connected to this server
+			SP_multicast(Mbox, AGREED_MESS, received_update.chatroom, 1, MAX_MESSLEN, 
+				(char *) &changed_message);	
 		}
 
 		/** Check if it is a like **/
 		else if(received_update.type == 1) {
 			//Perform the like update
-			like(received_update.user, received_update.lamport, 
+			changed_message = like(received_update.user, received_update.lamport, 
 				received_update.liked_message_lamp, target_groups[0]);
 
 			//Put in updates array
@@ -180,12 +185,16 @@ static void Handle_messages()
 				SP_multicast(Mbox, AGREED_MESS, server_group, 1, MAX_MESSLEN,
 					(char *) &received_update);
 			}
+
+			//Send the updated line to the clients in the chatroom connected to this server
+			SP_multicast(Mbox, AGREED_MESS, received_update.chatroom, 1, MAX_MESSLEN,
+				(char *) &changed_message);
 		}
 
 		/** Check if it is a chat message **/
 		else if(received_update.type == 0) {
 			//Perform the new message update
-			add_message(received_update.message, target_groups[0], 
+			changed_message = add_message(received_update.message, target_groups[0], 
 				received_update.lamport);
 
 			//Put in updates array
@@ -209,9 +218,9 @@ static void Handle_messages()
 					(char *) &received_update);
 			}
 
-			//Multicast the new data to all clients in the chatroom where the 
-			//update occurred so they have up to date views
-			Send_Recent_TwentyFive(target_groups[0]);
+			//Send the updated line to the clients in the chatroom connected to this server
+			SP_multicast(Mbox, AGREED_MESS, received_update.chatroom, 1, MAX_MESSLEN,
+				(char *) &changed_message);
 		}
 
 		/** Check if it is an entropy vector for merging **/
@@ -240,21 +249,28 @@ static void Handle_messages()
 		/** Check if its a complete history request **/
 		else if(received_update.type == 3) {
 			//Send the complete history to the client which requested it
-			//target_group[0] won't work here
-			//Send_All_Messages(char target_group[0], char *client_private_group);
+			Send_All_Messages(received_update.chatroom, sender);
 		}
 
 		/** Check if its a network view request **/
 		else if(received_update.type == 4) {
 			//Send the network view to the client which requested it
+			Send_Server_View();
 		}
 			
 	}else if( Is_membership_mess( service_type )) {
 		
 		/** Check if it was an update from the server group **/
 		if(strcmp(sender, SERVER_GROUP_NAME) == 0) {
-			printf("\nDebug> Membership message from the server group\n");
-			printf("\nDebug> Group from = %s\n", sender);
+			printf("\nDebug> Membership message from the server group");
+			printf("\nDebug> Message from: %s\n", sender);
+
+			/** Set the new view of chat servers in the current server's newtwork component**/
+			for(int i = 0; i < NUM_SERVERS; i++) {
+				for(int j = 0; j < MAX_GROUP_NAME; j++) { 
+					current_group[i][j] = target_groups[i][j];
+				}
+			}
 
 			//If it was an addition, merge
 			if(Is_caused_join_mess(service_type)) {
@@ -270,8 +286,8 @@ static void Handle_messages()
 
 		/** The update came from a chatroom group **/
 		}else{
-			printf("\nDebug> Membership message from a chatroom group\n");
-			printf("\nDebug> Group From = %s\n", sender);
+			printf("\nDebug> Membership message from a chatroom group");
+			printf("\nDebug> Message from: %s\n", sender);
 			
 			//Update your users list
 			//TODO - Need data structure - AFTER WORKING
@@ -287,6 +303,7 @@ static void Handle_messages()
 void Send_Merge_Updates()
 {
 	/** TODO: Should it be max in group? **/
+	//TODO: AFTER WORKING
 	/** Send necessary updates **/
 	for(int i = 0; i < NUM_SERVERS; i++) {
 		if(Is_Max(entropy_matrix[i])) {
@@ -343,8 +360,12 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 
 	/** Look for correct chatroom **/
 	while(strcmp(curr_room->chatroom_name, room_name) != 0) {
+		
+		//Deal with case if the chatroom is not in the data structure
+		if(curr_room->next == NULL) {
+			return;
+		}
 		curr_room = curr_room->next;
-		//What if room not in group??? - Still works?
 	}
 
 	curr_mess = curr_room->mess_head;
@@ -356,6 +377,7 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 	}
 }
 
+#if 0
 void Send_Recent_TwentyFive(char *room_name)
 {
 	/** Sends the most recent 25 messages it has from a particular chatroom to a specific
@@ -388,12 +410,12 @@ void Send_Recent_TwentyFive(char *room_name)
 
 	/** Send the last 25 messages **/
 	while(curr_mess->next != NULL) {
-		//Multicast the message to the chatroom group
 		SP_multicast(Mbox, AGREED_MESS, room_name, 1, MAX_MESSLEN, 
 			(char *) &curr_mess);
 		curr_mess = curr_mess->next;
 	}
 }
+#endif
 
 void Clear_Updates()
 {
@@ -425,5 +447,9 @@ void Send_Server_View()
 {
 	/** Sends a view of the chat servers in the current server's network to the client 
 	 *  who requested the view**/
-	//TODO
+	/*printf("\nServers in the current server's network segment:\n");
+	for(int i = 0; i < NUM_SERVERS; i++) {
+		printf("%d) %s", i, current_group[i]);
+	}*/
+	//TODO: SEND ---- DO NOT PRINT
 }
