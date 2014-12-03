@@ -124,6 +124,7 @@ static void Handle_messages()
 	printf("\nDebug> I GOT A MESSAGE!\n");
 	
 	if(Is_regular_mess( service_type )) {
+		
 		//Cast the message to an update
 		received_update = *((update *) mess);
 
@@ -257,6 +258,19 @@ static void Handle_messages()
 			//Send the network view to the client which requested it
 			Send_Server_View();
 		}
+
+		/** Check if its a chatroom join message **/
+		else if(received_update.type == 5) {
+			printf("\nDebug> Got chatroom join message - sending private\n");
+			struct message_node * message;
+			for(int i = 0; i < MAX_NAME; i++) {
+				message->message[i] = Private_group[i];
+			}
+			message->timestamp = -1;
+			ret = SP_join(Mbox, received_update.chatroom);
+			SP_multicast(Mbox, AGREED_MESS, target_groups[0], 1, MAX_MESSLEN,
+				(char *) &message);
+		}
 			
 	}else if( Is_membership_mess( service_type )) {
 		
@@ -296,6 +310,8 @@ static void Handle_messages()
 			//TODO - Create a "<user> joined" or "<user> left" update
 			//TODO - Multicast the update
 			//TODO - AFTER WORKING
+			
+			//
 		}
 	}
 }
@@ -357,6 +373,7 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 	
 	struct chatroom_node * curr_room = chatroom_head;
 	struct message_node * curr_mess;
+	struct message_node * tmp;
 
 	/** Look for correct chatroom **/
 	while(strcmp(curr_room->chatroom_name, room_name) != 0) {
@@ -371,10 +388,16 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 	curr_mess = curr_room->mess_head;
 	while(curr_mess->next != NULL) {
 		//Multicast the message to the client which requested the messages
+		//TODO: Set next to null
+		tmp = curr_mess->next;
+		curr_mess->next = NULL;
 		SP_multicast(Mbox, AGREED_MESS, client_private_group, 1, MAX_MESSLEN,
 			(char *) &curr_mess);
-		
+		curr_mess = tmp;
 	}
+
+	/** Send message noting that sending is gone **/
+	//Send message node with timestamp -1
 }
 
 #if 0

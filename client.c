@@ -29,14 +29,16 @@ static void Bye();
 int insert(message_node mess);
 
 /** Global Variables **/
-/*char              user[MAX_STRING];
-char              chatroom[MAX_STRING];*/
 char              *user;
 char              *chatroom;
+char              chatroom_join[200];
+char              *server_number;
+char              connected_server_private_group[MAX_STRING];
 
 int               server = 0;
 int               in_chatroom = 0; //1 if user has chosen a chatroom
 int               user_name_set = 0;
+int               connected = 0;
 
 user_node         head; //linked list of users in connected chatroom
 
@@ -139,14 +141,14 @@ static void User_command()
 			/** Connects the client to a server's default group **/
 			
 			/** Check that a user name has been set **/
-			/*if(!user_name_set) {
+			if(!user_name_set) {
 				printf("\nPlease set your username first\n");
 				break;
-			}*/
+			}
 
 			strcpy(chatroom, "default");
             sscanf( &command[2], "%s", input );
-			char* server_number = input;
+			server_number = input;
 			strcat(chatroom, server_number);
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
@@ -159,17 +161,25 @@ static void User_command()
 			printf("\nJoining a chatroom\n");
 
 			/** Check that the client is connected to a server **/
-			if(server == 0) {
+			if(!connected) {
 				printf("\nPlease connect to a server first.\n");
 				break;
 			}
             sscanf( &command[2], "%s", input );
 			SP_leave(Mbox, chatroom);
 			chatroom = input;
-			ret = SP_join(Mbox, chatroom);
+			strcat(chatroom_join, chatroom);
+			strcat(chatroom_join, server_number);
+			//Chatroom name is of form "<chatroom_name><server_index>"
+			//ie) "Room1" is chatroom "Room" on server 1
+
+			ret = SP_join(Mbox, chatroom_join);
 			if(ret < 0) SP_error(ret);
 			in_chatroom = 1;
 			printf("\nYour new chatroom is \'%s\'\n", chatroom);
+			update_message->type = 5;
+			update_message->chatroom = chatroom_join;
+			//TODO: Send out the update to the server
 			break;
 
 		case 'a':
@@ -285,48 +295,60 @@ static void Read_message()
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups, target_groups,
 		&mess_type, &endian_mismatch, sizeof(update), mess);
 	
-	printf("\nCLIENT GOT A MESSAGE\n");
+	printf("\nDebug> Client got a message\n");
 
 	if(Is_regular_mess( service_type )) {
-		//Cast the message to an update
+		//Cast the message to message_node
 		received_message = *((message_node *) mess);
-
-        if (capacity == 0) {
-            insert(received_message);
-            return;
-        }
-
-		lamport = (received_message.timestamp * 10) + received_message.server_index;
-        smallest_lamport = (messages_to_show[0].timestamp * 10) + messages_to_show[0].server_index;
-
-        if (lamport > smallest_lamport) {
-            insert(received_message);
-            Print_messages();
-        }
-        else if (lamport < smallest_lamport) {
-            //TODO: history
-        }
-		//TODO: Receive users updates
-		//Since they can only be sent from one server, we know what we will be receiving
-		//before after we send a request to the server, so our actions here can be 
-		//based on that. So, if we requested history, we expect that. If we receive 
-		//something else, it is either a user update or a set of 25 messages
 		
+		/** Deal with a normal message**/
+		if(received_message.timestamp >= 0) {
+
+			if (capacity == 0) {
+				insert(received_message);
+				return;
+			}
+
+			lamport = (received_message.timestamp * 10) + received_message.server_index;
+			smallest_lamport = (messages_to_show[0].timestamp * 10) + messages_to_show[0].server_index;
+
+			if (lamport > smallest_lamport) {
+				insert(received_message);
+				Print_messages();
+			}
+			else if (lamport < smallest_lamport) {
+				//TODO: history
+			}
+			//TODO: Receive users updates
+			//Since they can only be sent from one server, we know what we will be receiving
+			//before after we send a request to the server, so our actions here can be 
+			//based on that. So, if we requested history, we expect that. If we receive 
+			//something else, it is either a user update or a set of 25 messages
+
+		}
+
+		/** Deal with a server private group message **/
+		if(received_message.timestamp == -1) {
+			printf("\nDebug> Got server private group\n");
+			for(int i = 0; i < 80; i++) {
+				connected_server_private_group[i] = received_message.message[i];
+			}
+			//TODO: Set connected_server_private_group[]
+		}
 	}
+
     else if (Is_membership_mess( service_type )) {
-        printf("\nCLIENT GOT A MEMBERSHIP MESSAGE\n");
+        printf("\nDebug> Cient got a membership message\n");
         if (num_groups <= 1) {
             printf("\nConnection failed, server is unresponsive\n");
             SP_leave(Mbox, chatroom);
         } else {
             printf("\nConnection successful!\n");
+			connected = 1;
         }
     }
 	printf("\nUser> ");
 	fflush(stdout);
-	//TODO: Receive 25 recent
-	//TODO: Receive all
-	//TODO: Receive users updates
 }
 
 int insert(message_node mess) {
@@ -359,7 +381,6 @@ int insert(message_node mess) {
 
 static  void	Bye()
 {
-
 	printf("\nBye.\n");
 
 	SP_disconnect( Mbox );
