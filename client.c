@@ -24,6 +24,7 @@ int  valid(int);
 void Print_messages();
 static void User_command();
 static void Read_message();
+static void Bye();
 
 /** Global Variables **/
 /*char              user[MAX_STRING];
@@ -112,6 +113,136 @@ void Print_menu()
 
 static void User_command()
 {
+    char    command[130];
+	char	input[80];
+    int     chosen;
+	int	i;
+
+	for( i=0; i < sizeof(command); i++ ) command[i] = 0;
+	if( fgets( command, 130, stdin ) == NULL ) 
+            Bye();
+
+	switch( command[0] )
+	{
+		case 'u':
+			/** Sets the user's username **/
+            sscanf( &command[2], "%s", input );
+			user = input;
+			printf("\nYour new username is \'%s\'\n", user);
+			user_name_set = 1;
+			break;
+
+		case 'c':
+			/** Connects the client to a server's default group **/
+			
+			/** Check that a user name has been set **/
+			/*if(!user_name_set) {
+				printf("\nPlease set your username first\n");
+				break;
+			}*/
+
+			//TODO: Connect to correct server
+			strcpy(chatroom, "default");
+            sscanf( &command[2], "%s", input );
+			char* server_number = input;
+			strcat(chatroom, server_number);
+			ret = SP_join(Mbox, chatroom);
+			if(ret < 0) SP_error(ret);
+			server = atoi(input); //For connection
+			printf("\nConnected to server %s\n", input);
+			break;
+
+		case 'j':
+			/** Leave the current chatroom and join a new one **/
+			printf("\nJoining a chatroom\n");
+
+			/** Check that the client is connected to a server **/
+			if(server == 0) {
+				printf("\nPlease connect to a server first.\n");
+				break;
+			}
+            sscanf( &command[2], "%s", input );
+			SP_leave(Mbox, chatroom);
+			chatroom = input;
+			ret = SP_join(Mbox, chatroom);
+			if(ret < 0) SP_error(ret);
+			in_chatroom = 1;
+			printf("\nYour new chatroom is \'%s\'\n", chatroom);
+			break;
+
+		case 'a':
+			/** Create the append update and send it to the chatroom Spread group **/
+			if(!in_chatroom) {
+				printf("\nMust first connect to a chatroom\n");
+				break;
+			}
+            sscanf( &command[2], "%s", input );
+			update_message->type = 0;
+			//update_message->message = input;
+			//TODO: Send out the update to the server
+			//NEED SERVER PRIVATE GROUP
+			break;
+
+		case 'l':
+			/** Create the like update and send it to the chatroom Spread group **/
+			if(!in_chatroom) {
+				printf("\nMust first connect to a chatroom\n");
+				break;
+			}
+            sscanf( &command[2], "%s", input );
+			chosen = atoi(input);
+			if(!valid(chosen)) break;
+			update_message->type = 1;
+			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
+			//TODO: Send out the update to the server
+			break;
+
+		case 'r':
+			/** Create the unlike update and send it to the chatroom Spread group **/
+			if(!in_chatroom) {
+				printf("\nMust first connect to a chatroom\n");
+				break;
+			}
+            sscanf( &command[2], "%s", input );
+			chosen = atoi(input);
+			if(!valid(chosen)) {
+                printf("\nPlease enter a valid line *number*\n");
+                break;   
+            }
+			update_message->type = -1;
+			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
+			//TODO: Send out the udpate to the server
+			break;
+			Read_message();
+			break;
+
+		case 'h':
+			if(!in_chatroom) {
+				printf("\nMust first conenct to a chatroom\n");
+				break;
+			}
+			//TODO: Send request to the server
+			//TODO: When receive things, just print them on the screen - 
+			//TODO: Should be in order since only one server is sending
+			break;
+
+		case 'v':
+			/** Print the servers in the current server's network **/
+			//TODO: Send request to the server
+			break;
+
+		case 'p':
+			Print_menu();
+			break;
+
+		default:
+			printf("\nUnknown command\n");
+			Print_menu();
+
+			break;
+
+    }
+#if 0
 	int chosen;
 	
 	/** Deal with User Input **/
@@ -224,7 +355,7 @@ static void User_command()
 			printf("\nINVALID COMMAND\n");
 			break;
 	}
-
+#endif
 	printf("\nUser> ");
 	fflush(stdout);
 }
@@ -283,4 +414,14 @@ static void Read_message()
 	//TODO: Receive 25 recent
 	//TODO: Receive all
 	//TODO: Receive users updates
+}
+
+static  void	Bye()
+{
+
+	printf("\nBye.\n");
+
+	SP_disconnect( Mbox );
+
+	exit( 0 );
 }
