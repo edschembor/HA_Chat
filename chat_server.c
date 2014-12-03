@@ -40,6 +40,7 @@ static char      Private_group[MAX_NAME];
 static char      server_group[MAX_NAME] = SERVER_GROUP_NAME;
 static char      User[MAX_NAME] = "1";
 char             current_group[NUM_SERVERS][MAX_GROUP_NAME];
+int              joined_default = 0;
 
 static mailbox   Mbox;
 int              ret;
@@ -121,12 +122,17 @@ static void Handle_messages()
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups,
 		target_groups, &mess_type, &endian_mismatch, sizeof(update), mess);
 
+	if(ret < 0) {
+		return;
+	}
 	printf("\nDebug> I GOT A MESSAGE!\n");
+	printf("\nret: %d\n", ret);
 	
 	if(Is_regular_mess( service_type )) {
 		
 		//Cast the message to an update
 		received_update = *((update *) mess);
+		printf("\nDebug> Type: %d\n", received_update.type);
 
 		/** Check if it is an unlike **/
 		if(received_update.type == -1) {
@@ -194,6 +200,8 @@ static void Handle_messages()
 
 		/** Check if it is a chat message **/
 		else if(received_update.type == 0) {
+			printf("\nDebug> Got an append message request\n");
+			
 			//Perform the new message update
 			changed_message = add_message(received_update.message, target_groups[0], 
 				received_update.lamport);
@@ -302,6 +310,22 @@ static void Handle_messages()
 		}else{
 			printf("\nDebug> Membership message from a chatroom group");
 			printf("\nDebug> Message from: %s\n", sender);
+
+			/** Join client's chatroom and send it your private group **/
+			if(sender != NULL && strcat(target_groups[0], "server1") != 0) {
+				printf("Debug> chatroom: %s", chatroom);
+				printf("\nDebug> sender: %s", sender);
+				printf("\nDebug> target: %s", target_groups[0]);
+				printf("\nDebug> Non-default chatroom join request\n");
+				struct message_node * message = malloc(sizeof(message_node));;
+				for(int i = 0; i < MAX_NAME; i++) {
+					message->message[i] = Private_group[i];
+				}
+				printf("\nDebug> Sending private group to %s\n", chatroom);
+				message->timestamp = -1;
+				SP_multicast(Mbox, AGREED_MESS, target_groups[0], 1, MAX_MESSLEN,
+					(char *) &message);
+			}
 			
 			//Update your users list
 			//TODO - Need data structure - AFTER WORKING

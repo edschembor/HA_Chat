@@ -18,6 +18,7 @@
 #define MAX_STRING 80
 #define SPREAD_NAME "10030"
 #define MAX_MEMBERS 100
+#define MAX_MESSLEN 1400
 
 /** Method Declarations **/
 void Print_menu();
@@ -158,7 +159,7 @@ static void User_command()
 
 		case 'j':
 			/** Leave the current chatroom and join a new one **/
-			printf("\nJoining a chatroom\n");
+			printf("\nDebug> Joining a chatroom\n");
 
 			/** Check that the client is connected to a server **/
 			if(!connected) {
@@ -173,13 +174,21 @@ static void User_command()
 			//Chatroom name is of form "<chatroom_name><server_index>"
 			//ie) "Room1" is chatroom "Room" on server 1
 
+			//Send out the update to the server
+			update_message->type = 5;
+			update_message->chatroom = chatroom_join;
+			printf("\nDebug> Connected server: %s\n", connected_server_private_group);
+			SP_multicast(Mbox, AGREED_MESS, connected_server_private_group, 1,
+				MAX_MESSLEN, (char *) &update_message);
+
+			//Join the group
 			ret = SP_join(Mbox, chatroom_join);
+			SP_leave(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
 			in_chatroom = 1;
 			printf("\nYour new chatroom is \'%s\'\n", chatroom);
-			update_message->type = 5;
-			update_message->chatroom = chatroom_join;
-			//TODO: Send out the update to the server
+
+
 			break;
 
 		case 'a':
@@ -333,7 +342,6 @@ static void Read_message()
 			for(int i = 0; i < 80; i++) {
 				connected_server_private_group[i] = received_message.message[i];
 			}
-			//TODO: Set connected_server_private_group[]
 		}
 	}
 
