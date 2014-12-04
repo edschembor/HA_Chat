@@ -85,7 +85,7 @@ int main()
 	/** All necessary mallocs **/
 	update_message = malloc(sizeof(update));
 	chatroom = (char *) malloc(MAX_STRING);
-	user = malloc(sizeof(20));
+	user = malloc(sizeof(160));
 
 	/** Show the user the menu **/
 	Print_menu();
@@ -137,7 +137,7 @@ static void User_command()
 		case 'u':
 			/** Sets the user's username **/
             sscanf( &command[2], "%s", input );
-			user = input;
+			strcpy(user, input);
 			printf("\nYour new username is \'%s\'\n", user);
 			user_name_set = 1;
 			break;
@@ -217,7 +217,7 @@ static void User_command()
 			}
             sscanf( &command[2], "%s", input );
 			update_message->type = 0;
-			update_message->user = user;
+			strcpy(update_message->user, user);
 			printf("\nMess user: %s\n", update_message->user);
 			strcpy(update_message->message, input);
 			update_message->lamport.server_index = server;
@@ -314,10 +314,21 @@ void Print_messages()
 	printf("\n------------------------------------");
 	printf("\nRoom :%s\n", current_room);
 	printf("\nAttendees: ------------\n");
-	for(int i = 0; i < 25; i++)
+	int to_show = 0;
+	int like_count = 0;
+	if(capacity <= 25) {
+		to_show = capacity;
+	}else{
+		to_show = 25;
+	}
+	for(int i = 0; i < capacity; i++)
 	{
-		printf("\n%d) %s %s", i+1, messages_to_show[i].author,
+		printf("\n%d) %s: %s", i+1, messages_to_show[i].author,
 			messages_to_show[i].message);
+		/*like_count = messages_to_show[i].like_head->counter;
+		if(like_count != 0) {
+			printf("     Likes: %d", like_count);
+		}*/
 	}
 	printf("\n--------------------------------------");
 }

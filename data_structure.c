@@ -29,7 +29,7 @@ typedef struct message_node {
     char * chatroom_name;
     struct like_node * like_head;
     struct message_node * next;
-	char * author;
+	char author[20];
 } message_node;
 
 /** Used for the chatroom list which is held by each server **/
