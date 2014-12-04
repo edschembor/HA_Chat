@@ -46,6 +46,8 @@ static mailbox   Mbox;
 int              ret;
 int              num_groups;
 char             chatroom[MAX_NAME];
+char             default_group[MAX_NAME];
+char             individual_group[MAX_NAME];
 
 int              entropy_matrix[NUM_SERVERS][NUM_SERVERS];
 int              entropy_received = 0;
@@ -84,11 +86,17 @@ int main(int argc, char *argv[])
 	printf("\nDebug> Server group joined: %s\n", server_group);
 
 	/** Join the default client group **/
-	strcpy(chatroom, "default");
+	strcpy(default_group, "default");
 	char *machine_index_str;
 	sprintf(machine_index_str, "%d", machine_index);
-	strcat(chatroom, machine_index_str);
-	ret = SP_join(Mbox, chatroom);
+	strcat(default_group, machine_index_str);
+	ret = SP_join(Mbox, default_group);
+	if(ret < 0) SP_error(ret);
+
+	/** Join the servers individual group **/
+	strcpy(individual_group, "server");
+	strcat(individual_group, machine_index_str);
+	ret = SP_join(Mbox, individual_group);
 	if(ret < 0) SP_error(ret);
 
 	/** Initialize the udpate arrays **/
@@ -96,6 +104,13 @@ int main(int argc, char *argv[])
 		updates[i].size = INITIAL_SIZE;
 		updates[i].array = malloc(sizeof(update)*INITIAL_SIZE);
 	}
+
+	printf("\nERROR MESSAGES\n");
+	printf("\nILLEGAL_SESSION: %d\n", ILLEGAL_SESSION);
+	printf("\nILLEGAL_MESSAGE %d\n", ILLEGAL_MESSAGE);
+	printf("\nCONNECTION_CLOSED %d\n", CONNECTION_CLOSED);
+	printf("\nGROUPS SHORT %d\n", GROUPS_TOO_SHORT);
+	printf("\nBUFFER TOO SHORT %d\n", BUFFER_TOO_SHORT);
 
 	/* Process and send messages using the Spread Event System */
 	E_init();
@@ -115,16 +130,20 @@ static void Handle_messages()
 	int           service_type;
 	char          sender[MAX_GROUP_NAME];
 	int16         mess_type;
-	char          mess[1500];
+	char          mess[MAX_MESSLEN];
 	message_node  *changed_message;
 	
 	/** Receive a message **/
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups,
-		target_groups, &mess_type, &endian_mismatch, sizeof(update), mess);
+		target_groups, &mess_type, &endian_mismatch, MAX_MESSLEN, mess);
 
+	printf("\nDebug> I GOT A MESSAGE!\n");
+	printf("\nDebug> Ret: %d\n", ret);
+	
 	if(ret < 0) {
 		return;
 	}
+
 	printf("\nDebug> I GOT A MESSAGE!\n");
 	printf("\nret: %d\n", ret);
 	
@@ -206,6 +225,10 @@ static void Handle_messages()
 			changed_message = add_message(received_update.message, target_groups[0], 
 				received_update.lamport);
 
+			//Stamp the message
+			changed_message->timestamp = lamport_counter++;
+			changed_message->server_index = machine_index;
+
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
 			int element_count = updates[origin-1].element_count;
@@ -228,8 +251,8 @@ static void Handle_messages()
 			}
 
 			//Send the updated line to the clients in the chatroom connected to this server
-			SP_multicast(Mbox, AGREED_MESS, received_update.chatroom, 1, MAX_MESSLEN,
-				(char *) &changed_message);
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, received_update.chatroom, 1, MAX_MESSLEN,
+				(char *) changed_message);
 		}
 
 		/** Check if it is an entropy vector for merging **/
@@ -270,14 +293,8 @@ static void Handle_messages()
 		/** Check if its a chatroom join message **/
 		else if(received_update.type == 5) {
 			printf("\nDebug> Got chatroom join message - sending private\n");
-			struct message_node * message;
-			for(int i = 0; i < MAX_NAME; i++) {
-				message->message[i] = Private_group[i];
-			}
-			message->timestamp = -1;
 			ret = SP_join(Mbox, received_update.chatroom);
-			SP_multicast(Mbox, AGREED_MESS, target_groups[0], 1, MAX_MESSLEN,
-				(char *) &message);
+			printf("\nCheck\n");
 		}
 			
 	}else if( Is_membership_mess( service_type )) {
@@ -309,24 +326,20 @@ static void Handle_messages()
 		/** The update came from a chatroom group **/
 		}else{
 			printf("\nDebug> Membership message from a chatroom group");
-			printf("\nDebug> Message from: %s\n", sender);
-
-			/** Join client's chatroom and send it your private group **/
-			if(sender != NULL && strcat(target_groups[0], "server1") != 0) {
-				printf("Debug> chatroom: %s", chatroom);
-				printf("\nDebug> sender: %s", sender);
-				printf("\nDebug> target: %s", target_groups[0]);
-				printf("\nDebug> Non-default chatroom join request\n");
-				struct message_node * message = malloc(sizeof(message_node));;
-				for(int i = 0; i < MAX_NAME; i++) {
-					message->message[i] = Private_group[i];
-				}
-				printf("\nDebug> Sending private group to %s\n", chatroom);
-				message->timestamp = -1;
-				SP_multicast(Mbox, AGREED_MESS, target_groups[0], 1, MAX_MESSLEN,
-					(char *) &message);
-			}
+			printf("\nDebug> Message from: %s\n", sender);	
 			
+			/** Send the new client the recent 25 messages **/
+			if(Is_caused_join_mess(service_type)) {
+				printf("\nSender: %s\n", sender);
+				printf("\nDef: %s\n", default_group);
+				printf("\nInd: %s\n", individual_group);
+				if(strcmp(sender, default_group) != 0) {
+					//if(strcmp(sender, individual_group != 0)) {
+						//Send_Recent_TwentyFive(sender);
+					//}
+				}
+			}
+
 			//Update your users list
 			//TODO - Need data structure - AFTER WORKING
 				
@@ -334,8 +347,6 @@ static void Handle_messages()
 			//TODO - Create a "<user> joined" or "<user> left" update
 			//TODO - Multicast the update
 			//TODO - AFTER WORKING
-			
-			//
 		}
 	}
 }
@@ -424,7 +435,7 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 	//Send message node with timestamp -1
 }
 
-#if 0
+
 void Send_Recent_TwentyFive(char *room_name)
 {
 	/** Sends the most recent 25 messages it has from a particular chatroom to a specific
@@ -462,7 +473,6 @@ void Send_Recent_TwentyFive(char *room_name)
 		curr_mess = curr_mess->next;
 	}
 }
-#endif
 
 void Clear_Updates()
 {

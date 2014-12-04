@@ -24,6 +24,7 @@
 void Print_menu();
 int  valid(int);
 void Print_messages();
+void Reset_message_array();
 static void User_command();
 static void Read_message();
 static void Bye();
@@ -33,8 +34,9 @@ int insert(message_node mess);
 char              *user;
 char              *chatroom;
 char              chatroom_join[200];
-char              *server_number;
-char              connected_server_private_group[MAX_STRING];
+char              current_room[200];
+char              server_number;
+char              *server_group_string;
 
 int               server = 0;
 int               in_chatroom = 0; //1 if user has chosen a chatroom
@@ -55,7 +57,7 @@ char              option; //The action the user wants to take
 char              input[MAX_STRING];
 
 int               min_message_shown;
-message_node              messages_to_show[25];
+message_node      messages_to_show[25];
 lamport_timestamp messages_shown_timestamps[25];
 
 update            *update_message;
@@ -64,6 +66,7 @@ int main()
 {
 	/** Local Variables **/
 	int chosen;
+	server_group_string = malloc(80);
 
 	/** Set up timeout for Spread connection **/
 	sp_time test_timeout;
@@ -82,6 +85,7 @@ int main()
 	/** All necessary mallocs **/
 	update_message = malloc(sizeof(update));
 	chatroom = (char *) malloc(MAX_STRING);
+	//server_number = malloc(sizeof(1));
 
 	/** Show the user the menu **/
 	Print_menu();
@@ -149,46 +153,60 @@ static void User_command()
 
 			strcpy(chatroom, "default");
             sscanf( &command[2], "%s", input );
-			server_number = input;
-			strcat(chatroom, server_number);
+			server_number = *input;
+			strcat(chatroom, &server_number);
+			strcpy(current_room, chatroom);
 			ret = SP_join(Mbox, chatroom);
 			if(ret < 0) SP_error(ret);
 			server = atoi(input); //For connection
+
+			/** Remember the group of the server you are connecting to **/
+			strcpy(server_group_string, "server");
+			strcat(server_group_string, &server_number);
+
 		    printf("\nConnecting to server %s...\n", input);
 			break;
 
 		case 'j':
 			/** Leave the current chatroom and join a new one **/
-			printf("\nDebug> Joining a chatroom\n");
+			//printf("\nDebug> Joining a chatroom\n");
 
 			/** Check that the client is connected to a server **/
 			if(!connected) {
-				printf("\nPlease connect to a server first.\n");
+				//printf("\nPlease connect to a server first.\n");
 				break;
 			}
+
             sscanf( &command[2], "%s", input );
-			SP_leave(Mbox, chatroom);
+			//SP_leave(Mbox, chatroom);
 			chatroom = input;
-			strcat(chatroom_join, chatroom);
-			strcat(chatroom_join, server_number);
+			strcpy(chatroom_join, chatroom);
+			printf("\nsn: %s\n", &server_number);
+			strcat(chatroom_join, &server_number);
+			
 			//Chatroom name is of form "<chatroom_name><server_index>"
 			//ie) "Room1" is chatroom "Room" on server 1
 
 			//Send out the update to the server
 			update_message->type = 5;
-			update_message->chatroom = chatroom_join;
-			printf("\nDebug> Connected server: %s\n", connected_server_private_group);
-			SP_multicast(Mbox, AGREED_MESS, connected_server_private_group, 1,
-				MAX_MESSLEN, (char *) &update_message);
+			printf("\n%s\n", update_message->chatroom);
+			printf("\n%s\n", chatroom_join);
+			strcpy(update_message->chatroom, chatroom_join);
+			printf("\n%s\n", chatroom_join);
+			printf("\n%s\n", update_message->chatroom);
+			//printf("\nDebug> Connected server: %s\n", server_group_string);
+			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+				MAX_MESSLEN, (char *) update_message);
 
 			//Join the group
 			ret = SP_join(Mbox, chatroom_join);
-			SP_leave(Mbox, chatroom);
+			SP_leave(Mbox, current_room);
+			strcpy(current_room, chatroom_join);
 			if(ret < 0) SP_error(ret);
 			in_chatroom = 1;
 			printf("\nYour new chatroom is \'%s\'\n", chatroom);
-
-
+			Reset_message_array();
+			capacity = 0;
 			break;
 
 		case 'a':
@@ -199,9 +217,10 @@ static void User_command()
 			}
             sscanf( &command[2], "%s", input );
 			update_message->type = 0;
-			//update_message->message = input;
-			//TODO: Send out the update to the server
-			//NEED SERVER PRIVATE GROUP
+			strcpy(update_message->message, input);
+			update_message->lamport.server_index = server;
+			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+				MAX_MESSLEN, (char *) update_message);
 			break;
 
 		case 'l':
@@ -215,7 +234,11 @@ static void User_command()
 			if(!valid(chosen)) break;
 			update_message->type = 1;
 			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
-			//TODO: Send out the update to the server
+			
+			//Send out the update to the server
+			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+				MAX_MESSLEN, (char *) update_message);
+
 			break;
 
 		case 'r':
@@ -232,9 +255,11 @@ static void User_command()
             }
 			update_message->type = -1;
 			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
-			//TODO: Send out the udpate to the server
-			break;
-			Read_message();
+			
+			//Send out the update to the server
+			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+				MAX_MESSLEN, (char *) update_message);
+
 			break;
 
 		case 'h':
@@ -280,11 +305,23 @@ int valid(int line_number)
 
 void Print_messages()
 {
-	printf("\nRoom :%s\n", chatroom);
+	printf("\n------------------------------------");
+	printf("\nRoom :%s\n", current_room);
 	printf("\nAttendees: ------------\n");
 	for(int i = 0; i < 25; i++)
 	{
-		printf("\n%s",messages_to_show[(min_message_shown+i)%25].message);
+		printf("\n%d) %s", i+1, messages_to_show[(i)].message);
+	}
+	printf("\n--------------------------------------");
+}
+
+void Reset_message_array() 
+{
+	/** Empties the message array of the client **/
+	for(int i = 0; i < 25; i++) {
+		messages_to_show[i].timestamp = 0;
+		strcpy(messages_to_show[i].message, "");
+		messages_to_show[i].like_head = NULL;
 	}
 }
 
@@ -297,13 +334,15 @@ static void Read_message()
 	int             service_type;
 	char            sender[MAX_GROUP_NAME];
 	int16           mess_type;
-	char            mess[1500];
+	char            mess[MAX_MESSLEN];
     int             lamport, smallest_lamport;
 
 	/** Receive a message **/
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups, target_groups,
-		&mess_type, &endian_mismatch, sizeof(update), mess);
-	
+		&mess_type, &endian_mismatch, MAX_MESSLEN, mess);
+
+	printf("RETURN : %d", ret);
+
 	printf("\nDebug> Client got a message\n");
 
 	if(Is_regular_mess( service_type )) {
@@ -313,8 +352,11 @@ static void Read_message()
 		/** Deal with a normal message**/
 		if(received_message.timestamp >= 0) {
 
+			printf("\nGot message with timestamp: %d\n", received_message.timestamp);
+
 			if (capacity == 0) {
 				insert(received_message);
+				printf("\nInserting message\n");
 				return;
 			}
 
@@ -322,6 +364,7 @@ static void Read_message()
 			smallest_lamport = (messages_to_show[0].timestamp * 10) + messages_to_show[0].server_index;
 
 			if (lamport > smallest_lamport) {
+				
 				insert(received_message);
 				Print_messages();
 			}
@@ -336,13 +379,6 @@ static void Read_message()
 
 		}
 
-		/** Deal with a server private group message **/
-		if(received_message.timestamp == -1) {
-			printf("\nDebug> Got server private group\n");
-			for(int i = 0; i < 80; i++) {
-				connected_server_private_group[i] = received_message.message[i];
-			}
-		}
 	}
 
     else if (Is_membership_mess( service_type )) {
