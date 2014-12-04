@@ -155,6 +155,10 @@ static void Handle_messages()
 
 		/** Check if it is an unlike **/
 		if(received_update.type == -1) {
+			//Stamp the message
+			received_update.lamport.timestamp = lamport_counter++;
+			received_update.lamport.server_index = machine_index;
+			
 			//Perform the unlike update on linked list
 			changed_message = unlike(received_update.user, received_update.liked_message_lamp, 
 				target_groups[0]);
@@ -187,9 +191,13 @@ static void Handle_messages()
 
 		/** Check if it is a like **/
 		else if(received_update.type == 1) {
+			//Stamp the message
+			received_update.lamport.timestamp = lamport_counter++;
+			received_update.lamport.server_index = machine_index;
+
 			//Perform the like update
 			changed_message = like(received_update.user, received_update.lamport, 
-				received_update.liked_message_lamp, target_groups[0]);
+			received_update.liked_message_lamp, target_groups[0]);
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -228,6 +236,9 @@ static void Handle_messages()
 			//Stamp the message
 			changed_message->timestamp = lamport_counter++;
 			changed_message->server_index = machine_index;
+			printf("\n111111111\n");
+			strcpy(changed_message->author, received_update.user);
+			printf("\n222222222\n");
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;

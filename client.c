@@ -85,7 +85,7 @@ int main()
 	/** All necessary mallocs **/
 	update_message = malloc(sizeof(update));
 	chatroom = (char *) malloc(MAX_STRING);
-	//server_number = malloc(sizeof(1));
+	user = malloc(sizeof(20));
 
 	/** Show the user the menu **/
 	Print_menu();
@@ -217,6 +217,8 @@ static void User_command()
 			}
             sscanf( &command[2], "%s", input );
 			update_message->type = 0;
+			update_message->user = user;
+			printf("\nMess user: %s\n", update_message->user);
 			strcpy(update_message->message, input);
 			update_message->lamport.server_index = server;
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
@@ -231,7 +233,10 @@ static void User_command()
 			}
             sscanf( &command[2], "%s", input );
 			chosen = atoi(input);
-			if(!valid(chosen)) break;
+			printf("\nCHOSEN: %d\n", chosen);
+			if(!valid(chosen)){
+				break;
+			}
 			update_message->type = 1;
 			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
 			
@@ -295,11 +300,12 @@ static void User_command()
 
 int valid(int line_number)
 {
-	if((line_number > min_message_shown + 25) || (line_number < min_message_shown))
+	if((line_number > capacity) || (line_number <= 0))
 	{
 		printf("\nLINE NUMBER INVALID\n");
 		return 0;
 	}
+	printf("\ncapacity: %d\n", capacity);
 	return 1;
 }
 
@@ -310,7 +316,8 @@ void Print_messages()
 	printf("\nAttendees: ------------\n");
 	for(int i = 0; i < 25; i++)
 	{
-		printf("\n%d) %s", i+1, messages_to_show[(i)].message);
+		printf("\n%d) %s %s", i+1, messages_to_show[i].author,
+			messages_to_show[i].message);
 	}
 	printf("\n--------------------------------------");
 }
