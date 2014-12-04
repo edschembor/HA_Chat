@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	test_timeout.usec = 0;
 
 	/** Connect to the Spread client **/
-	ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, Private_group,
+	ret = SP_connect_timeout( Spread_name, "s", 0, 1, &Mbox, Private_group,
 		test_timeout);
 	if(ret != ACCEPT_SESSION)
 	{
@@ -237,7 +237,7 @@ static void Handle_messages()
 			changed_message->timestamp = lamport_counter++;
 			changed_message->server_index = machine_index;
 			printf("\n111111111\n");
-			strcpy(changed_message->author, received_update.user);
+			//strcpy(changed_message->author, received_update.user);
 			printf("\n222222222\n");
 
 			//Put in updates array
