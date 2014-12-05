@@ -244,7 +244,7 @@ static void User_command()
             for (i = 0; i < 80; i++) {
                 command[i] = command[i+2];
             }
-            command[i+1] = '\0';
+            command[i] = '\0';
             //sscanf( &command[2], "%s", input );
 			
 			//Allows spaces in input message
@@ -522,10 +522,10 @@ int insert(message_node mess) {
     }
     
 	//shift values
-    for (j = 0; j < i; j++) {
+    for (j = 0; j < i-1; j++) {
         messages_to_show[j] = messages_to_show[j+1];
     }
-    messages_to_show[j+1] = mess;
+    messages_to_show[j] = mess;
     return 0;
 }
 
