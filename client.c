@@ -212,9 +212,10 @@ static void User_command()
 				MAX_MESSLEN, (char *) update_message);
 
 			//Send out the leave update to the server
-			//update_message->type = 6;
-			//strcpy(update_message->chatroom, current_room);
-			//Multicast
+			update_message->type = 6;
+			strcpy(update_message->chatroom, current_room);
+			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+				MAX_MESSLEN, (char *) update_message);
 
 			//Join the new chatroom group
 			ret = SP_join(Mbox, chatroom_join);
@@ -355,7 +356,7 @@ void Print_messages()
 		tmp = tmp->next;
 	}
 
-	printf("\n");
+	printf("\n--------------------------------------");
 	
 	int to_show = 0;
 	int like_count = 0;
@@ -469,10 +470,14 @@ static void Read_message()
 
 		/** This is a "user left chatroom" message**/
 		else if(received_message.timestamp == -2) {
-			//user_node left_user;
-			//strcpy(left_user.user, received_message.author);
-			//remove_user(user_list, left_user);
-			//Print_messages();
+			user_node *left_user;
+			user_node *head = &user_list;
+			left_user = malloc(sizeof(user_node));
+			left_user->user = malloc(20);
+
+			strcpy(left_user->user, received_message.author);
+			remove_user(user_list, left_user);
+			Print_messages();
 		}
 
 	}
