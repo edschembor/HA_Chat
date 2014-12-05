@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 		updates[i].size = INITIAL_SIZE;
 		updates[i].array = malloc(sizeof(update)*INITIAL_SIZE);
 	}
-	to_change = malloc(sizeof(user_node));
+	//to_change = malloc(sizeof(user_node));
 
 	printf("\nERROR MESSAGES\n");
 	printf("\nILLEGAL_SESSION: %d\n", ILLEGAL_SESSION);
@@ -337,6 +337,7 @@ static void Handle_messages()
 			}
 			
 			//Create the to_change node
+			to_change = malloc(sizeof(user_node));
 			to_change->user = received_update.user;
 			to_change->connected_server = machine_index;
 			
@@ -344,7 +345,10 @@ static void Handle_messages()
 			add_user(tmp, to_change);
 
 			/** Send update to other server **/
-			//TODO
+			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
+				SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1,
+					MAX_MESSLEN, (char *) &received_update);
+			}
 			
 			/** Send update to the clients - wait for membership? **/
 			message_node *mess_to_send;
@@ -354,6 +358,28 @@ static void Handle_messages()
 			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, received_update.chatroom, 1,
 				MAX_MESSLEN, (char *) mess_to_send);
 
+			/** Send the new client who is in its chatroom **/
+			chatroom_node *tmp_room = chatroom_head;
+			//Get the chatroom node
+			while(tmp_room->next != NULL) {
+				if(strcmp(tmp_room->chatroom_name, received_update.chatroom) == 0) {
+					break;
+				}
+				tmp_room = tmp_room->next;
+			}
+			//Send the user updates in the server's data structure to the new client
+			user_node *tmp_user = tmp_room->user_list_head;
+			strcpy(mess_to_send->author, tmp_user->user);
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, sender, 1, MAX_MESSLEN, 
+				(char *) mess_to_send);
+			printf("\nMessage sent with user %s\n", mess_to_send->author);
+			while(tmp_user->next != NULL) {
+				strcpy(mess_to_send->author, tmp_user->user);
+				SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, sender, 1, MAX_MESSLEN, 
+					(char *) mess_to_send);
+				printf("\nMessage sent with user %s\n", mess_to_send->author);
+				tmp_user = tmp_user->next;
+			}
 		}
 
 		/** Check if its a chatroom leave message **/
@@ -389,7 +415,10 @@ static void Handle_messages()
 			printf("\n3333\n");
 			
 			/** Send update to other servers **/
-			//TODO
+			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
+				SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1,
+					MAX_MESSLEN, (char *) &received_update);
+			}
 			
 			/** Send update to clients **/
 			message_node *mess_to_send;
@@ -399,6 +428,7 @@ static void Handle_messages()
 			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, received_update.chatroom, 1,
 				MAX_MESSLEN, (char *) mess_to_send);
 
+			printf("\n::::::::::::::::Sent leave of %s\n", mess_to_send->author);
 			printf("\nSent left message to %s\n", received_update.chatroom);
 		}
 			
@@ -435,6 +465,8 @@ static void Handle_messages()
 			
 			/** Send the new client the recent 25 messages **/
 			if(Is_caused_join_mess(service_type)) {
+				
+				/** Send the new client the recent 25 messages **/
 				printf("\nSender: %s\n", sender);
 				printf("\nDef: %s\n", default_group);
 				printf("\nInd: %s\n", individual_group);
@@ -442,16 +474,8 @@ static void Handle_messages()
 					//if(strcmp(sender, individual_group != 0)) {
 						//Send_Recent_TwentyFive(sender);
 					//}
-				}
+				}				
 			}
-
-			//Update your users list
-			//TODO - Need data structure - AFTER WORKING
-				
-			//Multicast the update to all servers
-			//TODO - Create a "<user> joined" or "<user> left" update
-			//TODO - Multicast the update
-			//TODO - AFTER WORKING
 		}
 	}
 }

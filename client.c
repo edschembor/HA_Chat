@@ -33,8 +33,8 @@ int insert(message_node mess);
 /** Global Variables **/
 char              *user;
 char              *chatroom;
-char              chatroom_join[200];
-char              current_room[200];
+char              chatroom_join[40];
+char              current_room[40];
 char              server_number;
 char              *server_group_string;
 
@@ -60,6 +60,7 @@ int               min_message_shown;
 message_node      messages_to_show[25];
 lamport_timestamp messages_shown_timestamps[25];
 user_node         user_list;
+int               you_added = 0;
 
 update            *update_message;
 
@@ -151,9 +152,27 @@ static void User_command()
                 printf(" invalid username \n");
                 break;
             }
+			user_name_set = 1;
+
+			/** Send leave update **/
+			update_message->type = 6;
+			strcpy(update_message->chatroom, current_room);
+			strcpy(update_message->user, user);
+			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+				MAX_MESSLEN, (char *) update_message);
+			printf("\n::::::::::::::::::::::Sent leave of: %s\n", update_message->user);
+
+			/** Set the new username **/
 			strcpy(user, input);
 			printf("\nYour new username is \'%s\'\n", user);
-			user_name_set = 1;
+			you_added = 0;
+
+			/** Send join update **/
+			update_message->type = 5;
+			strcpy(update_message->user, user);
+			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+				MAX_MESSLEN, (char *) update_message);
+
 			break;
 
 		case 'c':
@@ -210,6 +229,7 @@ static void User_command()
 			strcpy(update_message->user, user);
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
+			SP_join(Mbox, chatroom_join);
 
 			//Send out the leave update to the server
 			update_message->type = 6;
@@ -218,7 +238,7 @@ static void User_command()
 				MAX_MESSLEN, (char *) update_message);
 
 			//Join the new chatroom group
-			ret = SP_join(Mbox, chatroom_join);
+			//ret = SP_join(Mbox, chatroom_join);
 			SP_leave(Mbox, current_room);
 			strcpy(current_room, chatroom_join);
 			if(ret < 0) SP_error(ret);
@@ -229,7 +249,8 @@ static void User_command()
 
 			/** Reset chatroom values **/
 			Reset_message_array();
-			//user_list.next = 0;
+			user_list.next = NULL;
+			you_added = 0;
 			capacity = 0;
 
 			break;
@@ -356,7 +377,7 @@ void Print_messages()
 		tmp = tmp->next;
 	}
 
-	printf("\n--------------------------------------");
+	printf("\n--------------------------------------\n");
 	
 	int to_show = 0;
 	int like_count = 0;
@@ -370,7 +391,7 @@ void Print_messages()
 	/** Print out the chatroom messages in the message array **/
 	for(int i = 0; i < capacity; i++)
 	{
-		printf("\n%d) %s: %s", i+1, messages_to_show[i].author,
+		printf("%d) %s: %s", i+1, messages_to_show[i].author,
 			messages_to_show[i].message);
 		if(messages_to_show[i].like_head == NULL) {
 			like_count = 0;
@@ -457,13 +478,12 @@ static void Read_message()
 			new_user = malloc(sizeof(user_node));
 			new_user->user = malloc(20);
 
-			printf("\nUser: %s\n", new_user->user);
-			printf("\nAuthor %s\n", received_message.author);
-
 			strcpy(new_user->user, received_message.author);
 
-			printf("\nUser to be added: %s\n", new_user->user);
-			add_user(head, new_user);
+			if(strcmp(new_user->user, user) != 0 || !you_added) {
+				add_user(head, new_user);
+				you_added = 1;
+			}
 			
 			Print_messages();
 		}
@@ -476,7 +496,7 @@ static void Read_message()
 			left_user->user = malloc(20);
 
 			strcpy(left_user->user, received_message.author);
-			remove_user(user_list, left_user);
+			remove_user(head, left_user);
 			Print_messages();
 		}
 

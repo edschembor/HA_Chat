@@ -21,21 +21,33 @@ void add_user(user_node *head, user_node *to_add)
 }
 
 /** Removes a user from the linked list **/
-/** THIS IS WRONG **/
-/*int remove_user(user_node *head, user_node *toRemove)
+int remove_user(user_node *head, user_node *to_remove)
 {
-	user_node *tmp = head;
-	while(tmp->next != NULL)
-	{
-		if(tmp->user == toRemove->user)
-		{
-			tmp->next = tmp->next->next;
-			//delete memory??
-			return 1;
+	user_node *tmp = head->next;
+
+	if(head->user != NULL) {
+		if(strcmp(head->user, to_remove->user) == 0) {
+			head = head->next;
+			return 0;
 		}
 	}
+
+	printf("\nHere\n");
+
+	if(head->next == NULL) {
+		return 0;
+	}
+
+	while(tmp->next != NULL) {
+		if(strcmp(tmp->next->user, to_remove->user) == 0) {
+			tmp->next = tmp->next->next;
+			break;
+		}
+		tmp = tmp->next;
+	}
+
 	return 0;
-}*/
+}
 
 /** Remove a user from the linked list based on the server it is
  *  currently connected to **/
