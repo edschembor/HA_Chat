@@ -2,20 +2,21 @@
  *  which are currently in a chatroom**/
 
 typedef struct user_node {
-	char*  user;
+	char  *user;
 	struct user_node * next;
 	int    connected_server;
 } user_node;
 
 /** Adds a user to a user linked list **/
-void add_user(user_node *head, user_node *toAdd)
+void add_user(user_node *head, user_node *to_add)
 {
 	user_node *tmp = head;
 	while(tmp->next != NULL)
 	{
 		tmp = tmp->next;
 	}
-	tmp->next = toAdd;
+	tmp->next = to_add;
+	printf("\nAdded: %s\n", to_add->user);
 }
 
 /** Removes a user from the linked list **/

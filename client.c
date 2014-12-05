@@ -188,6 +188,7 @@ static void User_command()
 			//Send out the join update to the server
 			update_message->type = 5;
 			strcpy(update_message->chatroom, chatroom_join);
+			strcpy(update_message->user, user);
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 
@@ -220,6 +221,11 @@ static void User_command()
 				break;
 			}
             sscanf( &command[2], "%s", input );
+			
+			//Allows spaces in input message
+			//if(fgets(input, 80, stdin) == NULL)
+			//	Bye();
+
 			update_message->type = 0;
 			strcpy(update_message->user, user);
 			printf("\nMess user: %s\n", update_message->user);
@@ -318,7 +324,16 @@ void Print_messages()
 {
 	printf("\n------------------------------------");
 	printf("\nChatroom: %s\n", current_room);
-	printf("\nAttendees: ------------\n");
+	printf("\nAttendees: ");
+
+	/** Print out who is in the chatroom **/
+	user_node *tmp = &user_list;
+	while(tmp->next != NULL) {
+		printf("%s ", tmp->next->user);
+		tmp = tmp->next;
+	}
+
+	printf("\n");
 	
 	int to_show = 0;
 	int like_count = 0;
@@ -329,6 +344,7 @@ void Print_messages()
 		to_show = 25;
 	}
 
+	/** Print out the chatroom messages in the message array **/
 	for(int i = 0; i < capacity; i++)
 	{
 		printf("\n%d) %s: %s", i+1, messages_to_show[i].author,
@@ -409,6 +425,32 @@ static void Read_message()
 			else if (lamport < smallest_lamport) {
 				//TODO: history
 			}
+		}
+
+		/** This is a "user joined chatroom" message **/
+		else if(received_message.timestamp == -1) {
+			user_node *new_user;
+			user_node *head = &user_list;
+			new_user = malloc(sizeof(user_node));
+			new_user->user = malloc(20);
+
+			printf("\nUser: %s\n", new_user->user);
+			printf("\nAuthor %s\n", received_message.author);
+
+			strcpy(new_user->user, received_message.author);
+
+			printf("\nUser to be added: %s\n", new_user->user);
+			add_user(head, new_user);
+			
+			Print_messages();
+		}
+
+		/** This is a "user left chatroom" message**/
+		else if(received_message.timestamp == -2) {
+			//user_node left_user;
+			//strcpy(left_user.user, received_message.author);
+			//remove_user(user_list, left_user);
+			//Print_messages();
 		}
 
 	}

@@ -319,24 +319,40 @@ static void Handle_messages()
 
 			/** Update the chatroom's users **/
 			//Get the chatroom node for the update's chatroom
-			/*chatroom_node *tmp;
-			tmp = chatroom_head;
+			chatroom_node *tmp;
 			
-			if(tmp == NULL) {
+			if(chatroom_head == NULL) {
 				add_chatroom(received_update.chatroom);
+				printf("\nNULL TMP\n");
 			}
+
+			tmp = chatroom_head;
+
 			while(tmp->next != NULL) {
+				printf("\nHERE\n");
 				if(strcmp(tmp->chatroom_name, received_update.chatroom)) {
 					break;
 				}
-			}*/
+				tmp = tmp->next;
+			}
 			
 			//Create the toAdd node
-			//to_change->user = received_update.user;
-			//to_change->connected_server = machine_index;
+			to_change->user = received_update.user;
+			to_change->connected_server = machine_index;
 			
 			//Add it to the data structure
-			//add_user(chatroom_user_head, to_change);
+			add_user(tmp, to_change);
+
+			/** Send update to other server **/
+			//TODO
+			
+			/** Send update to the clients - wait for membership? **/
+			message_node *mess_to_send;
+			mess_to_send = malloc(sizeof(message_node));
+			mess_to_send->timestamp = -1;
+			strcpy(mess_to_send->author, received_update.user);
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, received_update.chatroom, 1,
+				MAX_MESSLEN, (char *) mess_to_send);
 
 		}
 
@@ -364,6 +380,12 @@ static void Handle_messages()
 			
 			//Add it to the data structure
 			//REMOVE-----_user(chatroom_user_head, to_change);
+			
+			/** Send update to other servers **/
+			//TODO
+			
+			/** Send update to clients **/
+			//TODO
 		}
 			
 	}else if( Is_membership_mess( service_type )) {
