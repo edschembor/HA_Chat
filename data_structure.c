@@ -46,7 +46,6 @@ void print_likes(char * room, lamport_timestamp ts);
 */
 
 
-
 /** Method declarations **/
 int add_chatroom(char * new_name);
 message_node* add_message(char * new_mess, char * room_name, lamport_timestamp ts);

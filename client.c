@@ -59,6 +59,7 @@ char              input[MAX_STRING];
 int               min_message_shown;
 message_node      messages_to_show[25];
 lamport_timestamp messages_shown_timestamps[25];
+user_node         user_list;
 
 update            *update_message;
 
@@ -168,45 +169,48 @@ static void User_command()
 			break;
 
 		case 'j':
-			/** Leave the current chatroom and join a new one **/
-			//printf("\nDebug> Joining a chatroom\n");
+			printf("\nDebug> Joining a chatroom\n");
 
 			/** Check that the client is connected to a server **/
 			if(!connected) {
-				//printf("\nPlease connect to a server first.\n");
+				printf("\nPlease connect to a server first.\n");
 				break;
 			}
 
             sscanf( &command[2], "%s", input );
-			//SP_leave(Mbox, chatroom);
 			chatroom = input;
 			strcpy(chatroom_join, chatroom);
-			printf("\nsn: %s\n", &server_number);
 			strcat(chatroom_join, &server_number);
 			
 			//Chatroom name is of form "<chatroom_name><server_index>"
 			//ie) "Room1" is chatroom "Room" on server 1
 
-			//Send out the update to the server
+			//Send out the join update to the server
 			update_message->type = 5;
-			printf("\n%s\n", update_message->chatroom);
-			printf("\n%s\n", chatroom_join);
 			strcpy(update_message->chatroom, chatroom_join);
-			printf("\n%s\n", chatroom_join);
-			printf("\n%s\n", update_message->chatroom);
-			//printf("\nDebug> Connected server: %s\n", server_group_string);
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 
-			//Join the group
+			//Send out the leave update to the server
+			//update_message->type = 6;
+			//strcpy(update_message->chatroom, current_room);
+			//Multicast
+
+			//Join the new chatroom group
 			ret = SP_join(Mbox, chatroom_join);
 			SP_leave(Mbox, current_room);
 			strcpy(current_room, chatroom_join);
 			if(ret < 0) SP_error(ret);
 			in_chatroom = 1;
+
+
 			printf("\nYour new chatroom is \'%s\'\n", chatroom);
+
+			/** Reset chatroom values **/
 			Reset_message_array();
+			//user_list.next = 0;
 			capacity = 0;
+
 			break;
 
 		case 'a':
@@ -220,6 +224,7 @@ static void User_command()
 			strcpy(update_message->user, user);
 			printf("\nMess user: %s\n", update_message->user);
 			strcpy(update_message->message, input);
+			strcpy(update_message->chatroom, current_room);
 			update_message->lamport.server_index = server;
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
@@ -312,23 +317,30 @@ int valid(int line_number)
 void Print_messages()
 {
 	printf("\n------------------------------------");
-	printf("\nRoom :%s\n", current_room);
+	printf("\nChatroom: %s\n", current_room);
 	printf("\nAttendees: ------------\n");
+	
 	int to_show = 0;
 	int like_count = 0;
+	
 	if(capacity <= 25) {
 		to_show = capacity;
 	}else{
 		to_show = 25;
 	}
+
 	for(int i = 0; i < capacity; i++)
 	{
 		printf("\n%d) %s: %s", i+1, messages_to_show[i].author,
 			messages_to_show[i].message);
-		/*like_count = messages_to_show[i].like_head->counter;
+		if(messages_to_show[i].like_head == NULL) {
+			like_count = 0;
+		}else{
+			like_count = messages_to_show[i].like_head->counter;
+		}
 		if(like_count != 0) {
 			printf("     Likes: %d", like_count);
-		}*/
+		}
 	}
 	printf("\n--------------------------------------");
 }
@@ -363,10 +375,13 @@ static void Read_message()
 
 	printf("\nDebug> Client got a message\n");
 
+
 	if(Is_regular_mess( service_type )) {
 		//Cast the message to message_node
 		received_message = *((message_node *) mess);
 		
+		printf("\nGOT REGULAR MESSAGE\n");
+
 		/** Deal with a normal message**/
 		if(received_message.timestamp >= 0) {
 
@@ -375,26 +390,25 @@ static void Read_message()
 			if (capacity == 0) {
 				insert(received_message);
 				printf("\nInserting message\n");
+				Print_messages();
+				printf("\nUser> ");
+				fflush(stdout);
 				return;
 			}
 
 			lamport = (received_message.timestamp * 10) + received_message.server_index;
 			smallest_lamport = (messages_to_show[0].timestamp * 10) + messages_to_show[0].server_index;
 
-			if (lamport > smallest_lamport) {
-				
+			printf("\nDebug> Lamport: %d\n", lamport);
+			printf("\nDebug> Smallest: %d\n", smallest_lamport);
+
+			if (lamport >= smallest_lamport) {
 				insert(received_message);
 				Print_messages();
 			}
 			else if (lamport < smallest_lamport) {
 				//TODO: history
 			}
-			//TODO: Receive users updates
-			//Since they can only be sent from one server, we know what we will be receiving
-			//before after we send a request to the server, so our actions here can be 
-			//based on that. So, if we requested history, we expect that. If we receive 
-			//something else, it is either a user update or a set of 25 messages
-
 		}
 
 	}
@@ -417,13 +431,16 @@ int insert(message_node mess) {
     int i, j;
     int lamport;
     int curr_lamport;
-    if (capacity < 25) {
+    
+	if (capacity < 25) {
         messages_to_show[capacity] = mess;
         capacity++;
         return 0; //success
     }
-    lamport = (mess.timestamp * 10) + mess.server_index;
-    for (i = 0; i < capacity; i++) {
+    
+	lamport = (mess.timestamp * 10) + mess.server_index;
+    
+	for (i = 0; i < capacity; i++) {
         curr_lamport = (messages_to_show[i].timestamp * 10) + messages_to_show[i].server_index;
         if (lamport <= curr_lamport) {
             if (lamport == curr_lamport) {
@@ -433,7 +450,8 @@ int insert(message_node mess) {
             break;   
         }
     }
-    //shift values
+    
+	//shift values
     for (j = 0; j < i; j++) {
         messages_to_show[j] = messages_to_show[j+1];
     }

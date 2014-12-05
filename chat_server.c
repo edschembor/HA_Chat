@@ -54,6 +54,8 @@ int              entropy_received = 0;
 
 int              lamport_counter;
 
+user_node        *to_change;
+
 update_array            updates[NUM_SERVERS]; //Update struct for each server
 //Note: The main data structure run in data_structure.c
 
@@ -71,8 +73,14 @@ int main(int argc, char *argv[])
 	test_timeout.sec = 5;
 	test_timeout.usec = 0;
 
+	/** Set up the server name **/
+	strcpy(individual_group, "server");
+	char *machine_index_str;
+	sprintf(machine_index_str, "%d", machine_index);
+	strcat(individual_group, machine_index_str);
+
 	/** Connect to the Spread client **/
-	ret = SP_connect_timeout( Spread_name, "t", 0, 1, &Mbox, Private_group,
+	ret = SP_connect_timeout( Spread_name, individual_group, 0, 1, &Mbox, Private_group,
 		test_timeout);
 	if(ret != ACCEPT_SESSION)
 	{
@@ -87,15 +95,11 @@ int main(int argc, char *argv[])
 
 	/** Join the default client group **/
 	strcpy(default_group, "default");
-	char *machine_index_str;
-	sprintf(machine_index_str, "%d", machine_index);
 	strcat(default_group, machine_index_str);
 	ret = SP_join(Mbox, default_group);
 	if(ret < 0) SP_error(ret);
 
 	/** Join the servers individual group **/
-	strcpy(individual_group, "server");
-	strcat(individual_group, machine_index_str);
 	ret = SP_join(Mbox, individual_group);
 	if(ret < 0) SP_error(ret);
 
@@ -104,6 +108,7 @@ int main(int argc, char *argv[])
 		updates[i].size = INITIAL_SIZE;
 		updates[i].array = malloc(sizeof(update)*INITIAL_SIZE);
 	}
+	to_change = malloc(sizeof(user_node));
 
 	printf("\nERROR MESSAGES\n");
 	printf("\nILLEGAL_SESSION: %d\n", ILLEGAL_SESSION);
@@ -186,7 +191,7 @@ static void Handle_messages()
 
 			//Send the updated line to the clients in the chatroom connected to this server
 			SP_multicast(Mbox, AGREED_MESS, received_update.chatroom, 1, MAX_MESSLEN, 
-				(char *) &changed_message);	
+				(char *) changed_message);	
 		}
 
 		/** Check if it is a like **/
@@ -222,7 +227,8 @@ static void Handle_messages()
 
 			//Send the updated line to the clients in the chatroom connected to this server
 			SP_multicast(Mbox, AGREED_MESS, received_update.chatroom, 1, MAX_MESSLEN,
-				(char *) &changed_message);
+				(char *) changed_message);
+			printf("\nSENT BACK LIKED MESSAGE\n");
 		}
 
 		/** Check if it is a chat message **/
@@ -244,7 +250,7 @@ static void Handle_messages()
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
 			int element_count = updates[origin-1].element_count;
-			updates[origin-1].array[element_count] = received_update;;
+			updates[origin-1].array[element_count] = received_update;
 			updates[origin-1].element_count++;
 			updates[origin-1] = attempt_double(updates[origin-1]);
 
@@ -258,13 +264,16 @@ static void Handle_messages()
 
 			//Multicast the update to all servers
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
-				SP_multicast(Mbox, AGREED_MESS, server_group, 1, MAX_MESSLEN,
+				SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1, MAX_MESSLEN,
 					(char *) &received_update);
 			}
 
 			//Send the updated line to the clients in the chatroom connected to this server
 			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, received_update.chatroom, 1, MAX_MESSLEN,
 				(char *) changed_message);
+			printf("\n%s\n", received_update.chatroom);
+			printf("\n%s\n", changed_message->message);
+			printf("\nSENT BACK APPENDED MESSAGE\n");
 		}
 
 		/** Check if it is an entropy vector for merging **/
@@ -307,6 +316,54 @@ static void Handle_messages()
 			printf("\nDebug> Got chatroom join message - sending private\n");
 			ret = SP_join(Mbox, received_update.chatroom);
 			printf("\nCheck\n");
+
+			/** Update the chatroom's users **/
+			//Get the chatroom node for the update's chatroom
+			/*chatroom_node *tmp;
+			tmp = chatroom_head;
+			
+			if(tmp == NULL) {
+				add_chatroom(received_update.chatroom);
+			}
+			while(tmp->next != NULL) {
+				if(strcmp(tmp->chatroom_name, received_update.chatroom)) {
+					break;
+				}
+			}*/
+			
+			//Create the toAdd node
+			//to_change->user = received_update.user;
+			//to_change->connected_server = machine_index;
+			
+			//Add it to the data structure
+			//add_user(chatroom_user_head, to_change);
+
+		}
+
+		/** Check if its a chatroom leave message **/
+		else if(received_update.type == 6) {
+			printf("\nDebug> Got a chatroom leave message\n");
+
+			/** Update the chatroom's users **/
+			//Get the chatroom node for the update's chatroom
+			chatroom_node *tmp;
+			tmp = chatroom_head;
+			
+			if(tmp == NULL) {
+				add_chatroom(received_update.chatroom);
+			}
+			while(tmp->next != NULL) {
+				if(strcmp(tmp->chatroom_name, received_update.chatroom)) {
+					break;
+				}
+			}
+			
+			//Create the to_change node
+			to_change->user = received_update.user;
+			to_change->connected_server = machine_index;
+			
+			//Add it to the data structure
+			//REMOVE-----_user(chatroom_user_head, to_change);
 		}
 			
 	}else if( Is_membership_mess( service_type )) {
