@@ -16,6 +16,7 @@ void add_user(user_node *head, user_node *to_add)
 		tmp = tmp->next;
 	}
 	tmp->next = to_add;
+	to_add->next = NULL;
 	printf("\nAdded: %s\n", to_add->user);
 }
 
@@ -38,7 +39,7 @@ void add_user(user_node *head, user_node *to_add)
 
 /** Remove a user from the linked list based on the server it is
  *  currently connected to **/
-int remove_user(user_node *head, int connected_server_index)
+int remove_user_partition(user_node *head, int connected_server_index)
 {
 	user_node *tmp = head->next;
 
@@ -46,11 +47,18 @@ int remove_user(user_node *head, int connected_server_index)
 		return 0;
 	}
 
+	printf("\n55555\n");
+
 	while(tmp->next != NULL) {
+		printf("\nHERE: %s\n", tmp->user);
 		if(tmp->next->connected_server == connected_server_index) {
 			tmp->next = tmp->next->next;
+			break;
 		}
+		tmp = tmp->next;
 	}
+
+	printf("\n66666\n");
 
 	return 1;
 }
