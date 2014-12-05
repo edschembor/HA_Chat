@@ -88,6 +88,15 @@ int main()
 	chatroom = (char *) malloc(MAX_STRING);
 	user = malloc(sizeof(160));
 
+    /** Initialize messages_to_show array **/
+    int i;
+    message_node dummy;
+    dummy.timestamp = -1;
+    dummy.server_index = -1;
+    for (i = 0; i < 25; i++) {
+        messages_to_show[i] = dummy;
+    }
+
 	/** Show the user the menu **/
 	Print_menu();
 
@@ -137,7 +146,11 @@ static void User_command()
 	{
 		case 'u':
 			/** Sets the user's username **/
-            sscanf( &command[2], "%s", input );
+            ret = sscanf( &command[2], "%s", input );
+            if (ret < 1) {
+                printf(" invalid username \n");
+                break;
+            }
 			strcpy(user, input);
 			printf("\nYour new username is \'%s\'\n", user);
 			user_name_set = 1;
@@ -153,7 +166,11 @@ static void User_command()
 			}
 
 			strcpy(chatroom, "default");
-            sscanf( &command[2], "%s", input );
+            ret = sscanf( &command[2], "%s", input );
+            if (ret < 1) {
+                printf(" invalid server index \n");
+                break;
+            }
 			server_number = *input;
 			strcat(chatroom, &server_number);
 			strcpy(current_room, chatroom);
@@ -177,7 +194,11 @@ static void User_command()
 				break;
 			}
 
-            sscanf( &command[2], "%s", input );
+            ret = sscanf( &command[2], "%s", input );
+            if (ret < 1) {
+                printf(" invalid chatroom name \n");
+                break;
+            }
 			chatroom = input;
 			strcpy(chatroom_join, chatroom);
 			strcat(chatroom_join, &server_number);
@@ -220,7 +241,13 @@ static void User_command()
 				printf("\nMust first connect to a chatroom\n");
 				break;
 			}
-            sscanf( &command[2], "%s", input );
+            /** Overwrites 'a ' part of command[] **/
+            int i;
+            for (i = 0; i < 80; i++) {
+                command[i] = command[i+2];
+            }
+            command[i+1] = '\0';
+            //sscanf( &command[2], "%s", input );
 			
 			//Allows spaces in input message
 			//if(fgets(input, 80, stdin) == NULL)
@@ -229,7 +256,7 @@ static void User_command()
 			update_message->type = 0;
 			strcpy(update_message->user, user);
 			printf("\nMess user: %s\n", update_message->user);
-			strcpy(update_message->message, input);
+			strcpy(update_message->message, command);
 			strcpy(update_message->chatroom, current_room);
 			update_message->lamport.server_index = server;
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
@@ -482,7 +509,12 @@ int insert(message_node mess) {
     
 	lamport = (mess.timestamp * 10) + mess.server_index;
     
-	for (i = 0; i < capacity; i++) {
+	//for (i = 0; i < capacity; i++) {
+	for (i = 0; i < 25; i++) {
+        if ((messages_to_show[i].timestamp == -1) && (messages_to_show[i].server_index == -1)) {
+            messages_to_show[i] = mess;
+            return 0;
+        }
         curr_lamport = (messages_to_show[i].timestamp * 10) + messages_to_show[i].server_index;
         if (lamport <= curr_lamport) {
             if (lamport == curr_lamport) {
