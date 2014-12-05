@@ -186,8 +186,6 @@ static void User_command()
 			break;
 
 		case 'j':
-			printf("\nDebug> Joining a chatroom\n");
-
 			/** Check that the client is connected to a server **/
 			if(!connected) {
 				printf("\nPlease connect to a server first.\n");
@@ -255,7 +253,6 @@ static void User_command()
 
 			update_message->type = 0;
 			strcpy(update_message->user, user);
-			printf("\nMess user: %s\n", update_message->user);
 			strcpy(update_message->message, command);
 			strcpy(update_message->chatroom, current_room);
 			update_message->lamport.server_index = server;
@@ -307,7 +304,7 @@ static void User_command()
 
 		case 'h':
 			if(!in_chatroom) {
-				printf("\nMust first conenct to a chatroom\n");
+				printf("\nMust first connect to a chatroom\n");
 				break;
 			}
 			//TODO: Send request to the server
@@ -326,8 +323,6 @@ static void User_command()
 
 		default:
 			printf("\nUnknown command\n");
-			Print_menu();
-
 			break;
 
     }
@@ -483,7 +478,7 @@ static void Read_message()
 	}
 
     else if (Is_membership_mess( service_type )) {
-        printf("\nDebug> Cient got a membership message\n");
+        printf("\nDebug> Client got a membership message\n");
         if (num_groups <= 1) {
             printf("\nConnection failed, server is unresponsive\n");
             SP_leave(Mbox, chatroom);
@@ -500,19 +495,20 @@ int insert(message_node mess) {
     int i, j;
     int lamport;
     int curr_lamport;
-    
+/*    
 	if (capacity < 25) {
         messages_to_show[capacity] = mess;
         capacity++;
         return 0; //success
     }
-    
+  */  
 	lamport = (mess.timestamp * 10) + mess.server_index;
     
 	//for (i = 0; i < capacity; i++) {
 	for (i = 0; i < 25; i++) {
-        if ((messages_to_show[i].timestamp == -1) && (messages_to_show[i].server_index == -1)) {
+        if (messages_to_show[i].server_index == -1) {
             messages_to_show[i] = mess;
+            capacity++;
             return 0;
         }
         curr_lamport = (messages_to_show[i].timestamp * 10) + messages_to_show[i].server_index;
