@@ -197,6 +197,10 @@ static void Handle_messages()
 			//Perform the like update
 			changed_message = like(received_update.user, received_update.lamport, 
 			received_update.liked_message_lamp, received_update.chatroom);
+            
+            if (changed_message == NULL) {
+                return;
+            }
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
