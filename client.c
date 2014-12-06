@@ -327,9 +327,11 @@ static void User_command()
 				printf("\nMust first connect to a chatroom\n");
 				break;
 			}
-			//TODO: Send request to the server
-			//TODO: When receive things, just print them on the screen - 
-			//TODO: Should be in order since only one server is sending
+
+			/** Send a complete history request to the server **/
+			update_message->type = 3;
+			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1, 
+				MAX_MESSLEN, (char *) update_message);
 			break;
 
 		case 'v':
@@ -363,10 +365,12 @@ int valid(int line_number)
 
 void Print_messages()
 {
+
+	system("clear");
 	int chatroom_len = strlen(current_room);
 
 	printf("\n------------------------------------");
-	printf("\nChatroom: %s\n", current_room);
+	printf("\nChatroom: %.*s\n", chatroom_len-1, current_room);
 	printf("\nAttendees: ");
 
 	/** Print out who is in the chatroom **/

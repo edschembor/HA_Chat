@@ -23,7 +23,7 @@ void add_user(user_node *head, user_node *to_add)
 /** Removes a user from the linked list **/
 int remove_user(user_node *head, user_node *to_remove)
 {
-	user_node *tmp = head->next;
+	user_node *tmp = head;
 
 	if(head->user != NULL) {
 		if(strcmp(head->user, to_remove->user) == 0) {
