@@ -18,7 +18,6 @@ typedef struct like_node {
     struct lamport_timestamp mess_timestamp;
     char username[MAX_USERNAME_SIZE];
     struct like_node * next;
-	int counter;
 } like_node;
 
 /** Used for the message list which is held by each chatroom **/
@@ -30,6 +29,7 @@ typedef struct message_node {
     struct like_node * like_head;
     struct message_node * next;
 	char author[20];
+	int num_likes;
 } message_node;
 
 /** Used for the chatroom list which is held by each server **/
@@ -174,7 +174,7 @@ message_node* like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts,
     chatroom_node * curr = chatroom_head;
     message_node * curr_mess;
     int mess_lamport = (mess_ts.timestamp * 10) + (mess_ts.server_index);
-    int curr_mess_lamport = 0;
+    int curr_mess_lamport;
     like_node * curr_like;
     like_node * prev_like;
     int lamport;
@@ -194,7 +194,7 @@ message_node* like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts,
     }
 
     curr_mess = curr->mess_head;
-
+    curr_mess_lamport = (10 * curr_mess->timestamp) + (curr_mess->server_index);
     /*find correct message*/
     while (mess_lamport != curr_mess_lamport) {
         curr_mess = curr_mess->next;
@@ -216,7 +216,7 @@ message_node* like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts,
     /*if head doesn't exist add, return*/
     if (curr_like == NULL) {
         curr_mess->like_head = to_add;
-		curr_mess->like_head->counter++;
+		curr_mess->num_likes++;
         return curr_mess;
     }
 
@@ -239,7 +239,7 @@ message_node* like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts,
         } else {
             curr_mess->like_head->next = to_add;
         }
-		curr_mess->like_head->counter++;
+		curr_mess->num_likes++;
         return curr_mess;
     }
 
@@ -253,12 +253,12 @@ message_node* like(char * user, lamport_timestamp ts, lamport_timestamp mess_ts,
 
     if (curr_like == NULL) {
         prev_like->next = to_add;
-		curr_mess->like_head->counter++;
+		curr_mess->num_likes++;
         return curr_mess;
     }
     to_add->next = curr_like;
     prev_like->next = to_add;
-	curr_mess->like_head->counter++;
+	curr_mess->num_likes++;
     return curr_mess;
 }
 
@@ -367,7 +367,7 @@ message_node* unlike(char * user, lamport_timestamp mess_ts, char * room) {
         curr_mess->like_head = curr_mess->like_head->next;
         curr_like->next = NULL;
         free(curr_like);
-		curr_mess->like_head->counter--;
+		curr_mess->num_likes--;
         return curr_mess;
     }
 
@@ -377,7 +377,7 @@ message_node* unlike(char * user, lamport_timestamp mess_ts, char * room) {
             curr_like->next = curr_like->next->next;
             to_remove->next = NULL;
             free(to_remove);
-			curr_mess->like_head->counter--;
+			curr_mess->num_likes--;
             return curr_mess;
         }
         curr_like = curr_like->next;

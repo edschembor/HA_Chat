@@ -138,6 +138,7 @@ static void Handle_messages()
 	char          mess[MAX_MESSLEN];
 	message_node  *changed_message;
 	
+    changed_message = malloc(sizeof(message_node));
 	/** Receive a message **/
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups,
 		target_groups, &mess_type, &endian_mismatch, MAX_MESSLEN, mess);
@@ -178,12 +179,12 @@ static void Handle_messages()
 
 			//Multicast the update to all servers if the update was from a client
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
-				SP_multicast(Mbox, AGREED_MESS, server_group, 1, MAX_MESSLEN,
+				SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, server_group, 1, MAX_MESSLEN,
 					(char *) &received_update);
 			}
 
 			//Send the updated line to the clients in the chatroom connected to this server
-			SP_multicast(Mbox, AGREED_MESS, received_update.chatroom, 1, MAX_MESSLEN, 
+			SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, received_update.chatroom, 1, MAX_MESSLEN, 
 				(char *) changed_message);	
 		}
 
@@ -195,7 +196,7 @@ static void Handle_messages()
 
 			//Perform the like update
 			changed_message = like(received_update.user, received_update.lamport, 
-			received_update.liked_message_lamp, target_groups[0]);
+			received_update.liked_message_lamp, received_update.chatroom);
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -214,12 +215,12 @@ static void Handle_messages()
 
 			//Multicast the update to all servers
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
-				SP_multicast(Mbox, AGREED_MESS, server_group, 1, MAX_MESSLEN,
+				SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, server_group, 1, MAX_MESSLEN,
 					(char *) &received_update);
 			}
 
 			//Send the updated line to the clients in the chatroom connected to this server
-			SP_multicast(Mbox, AGREED_MESS, received_update.chatroom, 1, MAX_MESSLEN,
+			SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, received_update.chatroom, 1, MAX_MESSLEN,
 				(char *) changed_message);
 			printf("\nSENT BACK LIKED MESSAGE to %s\n", received_update.chatroom);
 		}
@@ -542,7 +543,7 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 		//TODO: Set next to null
 		tmp = curr_mess->next;
 		curr_mess->next = NULL;
-		SP_multicast(Mbox, AGREED_MESS, client_private_group, 1, MAX_MESSLEN,
+		SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, client_private_group, 1, MAX_MESSLEN,
 			(char *) &curr_mess);
 		curr_mess = tmp;
 	}

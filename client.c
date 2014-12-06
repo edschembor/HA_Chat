@@ -121,7 +121,7 @@ void Print_menu()
 	printf("\n|     USER MENU     |");
 	printf("\n=====================");
 	printf("\nu [name]         - Login with a user name");
-	printf("\nc [sever index]  - Connect to the specified server");
+	printf("\nc [server index]  - Connect to the specified server");
 	printf("\nj [room name]    - Join a chat room");
 	printf("\na [message]      - Add a message to the chat");
 	printf("\nl [line number]  - Like the message at the line number");
@@ -293,7 +293,8 @@ static void User_command()
 				break;
 			}
 			update_message->type = 1;
-			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
+			update_message->liked_message_lamp.timestamp = messages_to_show[chosen-1].timestamp;
+			update_message->liked_message_lamp.server_index = messages_to_show[chosen-1].server_index;
 			
 			//Send out the update to the server
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
@@ -399,7 +400,7 @@ void Print_messages()
 		if(messages_to_show[i].like_head == NULL) {
 			like_count = 0;
 		}else{
-			like_count = messages_to_show[i].like_head->counter;
+			like_count = messages_to_show[i].num_likes;
 		}
 		if(like_count != 0) {
 			printf("     Likes: %d", like_count);
