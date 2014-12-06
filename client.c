@@ -62,6 +62,7 @@ lamport_timestamp messages_shown_timestamps[25];
 user_node         user_list;
 int               you_added = 0;
 int               history_line_count = 1;
+int               waiting_history = 0;
 
 update            *update_message;
 
@@ -161,7 +162,6 @@ static void User_command()
 			strcpy(update_message->user, user);
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
-			printf("\n::::::::::::::::::::::Sent leave of: %s\n", update_message->user);
 
 			/** Set the new username **/
 			strcpy(user, input);
@@ -185,16 +185,19 @@ static void User_command()
 				break;
 			}
 
+			chatroom = (char *) malloc(MAX_STRING); 
 			strcpy(chatroom, "default");
             ret = sscanf( &command[2], "%s", input );
             if (ret < 1) {
                 printf(" invalid server index \n");
                 break;
             }
+
 			server_number = *input;
 			strcat(chatroom, &server_number);
 			strcpy(current_room, chatroom);
 			ret = SP_join(Mbox, chatroom);
+			printf("\nJOINED: %s\n", chatroom);
 			if(ret < 0) SP_error(ret);
 			server = atoi(input); //For connection
 
@@ -228,6 +231,7 @@ static void User_command()
 			update_message->type = 5;
 			strcpy(update_message->chatroom, chatroom_join);
 			strcpy(update_message->user, user);
+			printf("\nServer group string: %s\n", server_group_string);
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 			SP_join(Mbox, chatroom_join);
@@ -289,10 +293,16 @@ static void User_command()
 			}
             sscanf( &command[2], "%s", input );
 			chosen = atoi(input);
-			printf("\nCHOSEN: %d\n", chosen);
+
 			if(!valid(chosen)){
+				printf("\nPlease enter a valid line *number*\n");
 				break;
 			}
+			
+			if(strcmp(messages_to_show[chosen-1].author, user) == 0) {
+				break;
+			}
+
 			update_message->type = 1;
 			update_message->liked_message_lamp.timestamp = messages_to_show[chosen-1].timestamp;
 			update_message->liked_message_lamp.server_index = messages_to_show[chosen-1].server_index;
@@ -305,18 +315,22 @@ static void User_command()
 
 		case 'r':
 			/** Create the unlike update and send it to the chatroom Spread group **/
+			printf("\nSending unlike!!!!\n");
 			if(!in_chatroom) {
 				printf("\nMust first connect to a chatroom\n");
 				break;
 			}
             sscanf( &command[2], "%s", input );
 			chosen = atoi(input);
+			
 			if(!valid(chosen)) {
                 printf("\nPlease enter a valid line *number*\n");
                 break;   
             }
+
 			update_message->type = -1;
 			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
+			update_message->liked_message_lamp.server_index = messages_to_show[chosen-1].server_index;
 			
 			//Send out the update to the server
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
@@ -331,9 +345,13 @@ static void User_command()
 			}
 
 			/** Send a complete history request to the server **/
+			system("clear");
+			printf("HISTORY: \n");
 			update_message->type = 3;
+			printf("\n\n\n\nHISTORY*****REQUEST\n");
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1, 
 				MAX_MESSLEN, (char *) update_message);
+			waiting_history = 1;
 			break;
 
 		case 'v':
@@ -350,9 +368,11 @@ static void User_command()
 			break;
 
     }
-
-	printf("\nUser> ");
-	fflush(stdout);
+	if(!waiting_history) {
+		printf("\nUser> ");
+		fflush(stdout);
+	}
+	waiting_history = 0;
 }
 
 int valid(int line_number)
@@ -370,6 +390,7 @@ void Print_messages()
 
 	system("clear");
 	int chatroom_len = strlen(current_room);
+	int mess_len;
 
 	printf("\n------------------------------------");
 	printf("\nChatroom: %.*s\n", chatroom_len-1, current_room);
@@ -396,15 +417,17 @@ void Print_messages()
 	/** Print out the chatroom messages in the message array **/
 	for(int i = 0; i < capacity; i++)
 	{
-		printf("%d) %s: %s", i+1, messages_to_show[i].author,
-			messages_to_show[i].message);
+		mess_len = strlen(messages_to_show[i].message);
+		printf("%d) %s: %.*s", i+1, messages_to_show[i].author,
+			mess_len-1, messages_to_show[i].message);
 		if(messages_to_show[i].like_head == NULL) {
 			like_count = 0;
+			printf("\n");
 		}else{
 			like_count = messages_to_show[i].num_likes;
 		}
 		if(like_count != 0) {
-			printf("     Likes: %d", like_count);
+			printf("     Likes: %d\n", like_count);
 		}
 	}
 	printf("\n--------------------------------------");
@@ -436,16 +459,10 @@ static void Read_message()
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups, target_groups,
 		&mess_type, &endian_mismatch, MAX_MESSLEN, mess);
 
-	printf("RETURN : %d", ret);
-
-	printf("\nDebug> Client got a message\n");
-
 
 	if(Is_regular_mess( service_type )) {
 		//Cast the message to message_node
 		received_message = *((message_node *) mess);
-		
-		printf("\nGOT REGULAR MESSAGE\n");
 
 		/** Deal with a normal message**/
 		if(received_message.timestamp >= 0) {
@@ -464,19 +481,31 @@ static void Read_message()
 			lamport = (received_message.timestamp * 10) + received_message.server_index;
 			smallest_lamport = (messages_to_show[0].timestamp * 10) + messages_to_show[0].server_index;
 
-			printf("\nDebug> Lamport: %d\n", lamport);
-			printf("\nDebug> Smallest: %d\n", smallest_lamport);
-
 			if (lamport >= smallest_lamport) {
 				printf("\nInserting: %s\n", received_message.message);
 				insert(received_message);
 				Print_messages();
 			}
 			else if (lamport < smallest_lamport) {
+				int likes = 0;
+				
 				//Its history - Print the message
-				printf("\n%d) %s: %s\n", history_line_count, received_message.author,
-					received_message.message);
+				printf("\n%d) %s: %s\n", history_line_count, 
+					received_message.author, received_message.message);
+
+				//Deal with printing likes
+				if(received_message.like_head == NULL) {
+					likes = 0;
+					printf("\n");
+				}else{
+					likes = received_message.num_likes;
+				}
+				if(likes != 0) {
+					printf("	Likes: %d\n", likes);
+				}
+
 				history_line_count++;
+				waiting_history = 1;
 			}
 		}
 
@@ -511,9 +540,14 @@ static void Read_message()
 		
 		/** This is a "history done sending" message**/
 		else if(received_message.timestamp == -3) {
-			//Print last 25
-			history_line_count = 0;
-			printf("\nGOT END MESSAGEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\n");
+			//Print the last 25
+			for(int i = 0; i < capacity; i++) {
+				printf("%d) %s: %s\n", history_line_count,
+					messages_to_show[i].author,
+					messages_to_show[i].message);
+					history_line_count++;
+			}
+			history_line_count = 1;
 			printf("\n-----------------------\n");
 		}
 
@@ -529,8 +563,11 @@ static void Read_message()
 			connected = 1;
         }
     }
-	printf("\nUser> ");
-	fflush(stdout);
+	if(!waiting_history) {
+		printf("\nUser> ");
+		fflush(stdout);
+	}
+	waiting_history = 0;
 }
 
 int insert(message_node mess) {

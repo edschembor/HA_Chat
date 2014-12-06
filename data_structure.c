@@ -128,14 +128,14 @@ message_node* add_message(char * new_mess, char * room_name, lamport_timestamp t
 
     /*if head doesn't exist add, return*/
     if (curr_mess == NULL) {
-		printf("\n--------THE HEAD WAS NULL------\n");
+		//printf("\n--------THE HEAD WAS NULL------\n");
         curr_room->mess_head = to_add;
         return to_add;
     }
 
     //TODO necessary? if 1 element in list base case*/
     if (curr_mess->next == NULL) {
-		printf("\nHERE - adding second\n");
+		//printf("\nHERE - adding second\n");
         if (lamport <= curr_lamport) {
             to_add->next = curr_room->mess_head;
             curr_room->mess_head = to_add;
@@ -332,23 +332,34 @@ message_node* unlike(char * user, lamport_timestamp mess_ts, char * room) {
     like_node * curr_like;
     like_node * to_remove;
 
+	printf("\nUNLIKEEEEEEEEEEEEEEEE\n");
+	//printf("\n1111\n");
     if (head == NULL) {
         return NULL;
     }
 
+	//printf("\n2222\n");
     while (head != NULL) {
         if (strcmp(head->chatroom_name, room) == 0) {
             curr_mess = head->mess_head;
             break;
         }
+		printf("\n\nCHANGEDDDDDDDDDDDDDDDDDDDD\n\n");
         head = head->next;
     }
 
+	//printf("\n33333\n");
     if (head == NULL || curr_mess == NULL) {
         return NULL;
     }
 
+	//printf("\n4444\n");
     while (curr_mess != NULL) {
+		//printf("\nmess_ts time: %d\n", mess_ts.timestamp);
+		//printf("\nmess_ts ser: %d\n", mess_ts.server_index);
+
+		//printf("\ncurr_mess time: %d\n", curr_mess->timestamp);
+		//printf("\ncurr_mess ser: %d\n", curr_mess->server_index);
         if (((curr_mess->timestamp * 10) + curr_mess->server_index) == ((mess_ts.timestamp * 10) + mess_ts.server_index)) {
             curr_like = curr_mess->like_head;
             break;
@@ -356,10 +367,12 @@ message_node* unlike(char * user, lamport_timestamp mess_ts, char * room) {
         curr_mess = curr_mess->next;
     }
 
+	//printf("\n5555\n");
     if (curr_mess == NULL || curr_like == NULL) {
         return NULL;
     }
 
+	//printf("\n6666\n");
     if (strcmp(user, curr_like->username) == 0) {
         curr_mess->like_head = curr_mess->like_head->next;
         curr_like->next = NULL;

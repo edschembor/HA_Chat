@@ -31,6 +31,7 @@ void Send_All_Messages(char *, char *);
 void Clear_Updates();
 void Compare_Lamport();
 void Send_Server_View();
+char* chatroom_to_local(char[]);
 
 /** Global Variables **/
 static int       machine_index;
@@ -53,6 +54,7 @@ int              entropy_matrix[NUM_SERVERS][NUM_SERVERS];
 int              entropy_received = 0;
 
 int              lamport_counter;
+char*            local;
 
 user_node        *to_change;
 
@@ -98,6 +100,7 @@ int main(int argc, char *argv[])
 	strcat(default_group, machine_index_str);
 	ret = SP_join(Mbox, default_group);
 	if(ret < 0) SP_error(ret);
+	printf("\nDEFAULT GROUP: %s\n", default_group);
 
 	/** Join the servers individual group **/
 	ret = SP_join(Mbox, individual_group);
@@ -108,6 +111,7 @@ int main(int argc, char *argv[])
 		updates[i].size = INITIAL_SIZE;
 		updates[i].array = malloc(sizeof(update)*INITIAL_SIZE);
 	}
+	local = malloc(sizeof(char[80]));
 
 	/* Process and send messages using the Spread Event System */
 	E_init();
@@ -135,9 +139,13 @@ static void Handle_messages()
 	ret = SP_receive(Mbox, &service_type, sender, MAX_MEMBERS, &num_groups,
 		target_groups, &mess_type, &endian_mismatch, MAX_MESSLEN, mess);
 	
+	printf("\nGOT A MESSAGE\n");
+
 	if(ret < 0) {
 		return;
 	}
+
+	printf("\nGOT A NON-BROKEN MESSAGE\n");
 	
 	if(Is_regular_mess( service_type )) {
 		
@@ -146,13 +154,20 @@ static void Handle_messages()
 
 		/** Check if it is an unlike **/
 		if(received_update.type == -1) {
+			printf("\nGOT A REMOVE LIKE MESSAGE\n");
+			
 			//Stamp the message
 			received_update.lamport.timestamp = lamport_counter++;
 			received_update.lamport.server_index = machine_index;
 			
 			//Perform the unlike update on linked list
 			changed_message = unlike(received_update.user, received_update.liked_message_lamp, 
-				target_groups[0]);
+				received_update.chatroom);
+
+			if(changed_message == NULL) {
+				printf("\nRemoved was null, GG\n");
+				return;
+			}
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -176,7 +191,7 @@ static void Handle_messages()
 			}
 
 			//Send the updated line to the clients in the chatroom connected to this server
-			SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, received_update.chatroom, 1, MAX_MESSLEN, 
+			SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, chatroom_to_local(received_update.chatroom), 1, MAX_MESSLEN, 
 				(char *) changed_message);	
 		}
 
@@ -216,9 +231,8 @@ static void Handle_messages()
 			}
 
 			//Send the updated line to the clients in the chatroom connected to this server
-			SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, received_update.chatroom, 1, MAX_MESSLEN,
+			SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, chatroom_to_local(received_update.chatroom), 1, MAX_MESSLEN,
 				(char *) changed_message);
-			printf("\nSENT BACK LIKED MESSAGE to %s\n", received_update.chatroom);
 		}
 
 		/** Check if it is a chat message **/
@@ -253,13 +267,20 @@ static void Handle_messages()
 
 			//Multicast the update to all servers
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
+				printf("\nTARGET GROUP: %s\n", target_groups[0]);
+				printf("\nSERVER GROUP NAME: %s\n", SERVER_GROUP_NAME);
 				SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1, MAX_MESSLEN,
-					(char *) &received_update);
+					(char *) received_update);
 			}
 			printf("\nSent message: %s\n", received_update.message);
 
+			/** Send to local, not the same as sender **/
+			//char chatroom_local[80];
+			//strcpy(chatroom, chatroom_to_local(received_update.chatroom));
+
+
 			//Send the updated line to the clients in the chatroom connected to this server
-			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, received_update.chatroom, 1, MAX_MESSLEN,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, chatroom_to_local(received_update.chatroom), 1, MAX_MESSLEN,
 				(char *) changed_message);
 		}
 
@@ -335,6 +356,8 @@ static void Handle_messages()
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
 				SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1,
 					MAX_MESSLEN, (char *) &received_update);
+			}else{
+				return;
 			}
 			
 			/** Send update to the clients - wait for membership? **/
@@ -342,7 +365,7 @@ static void Handle_messages()
 			mess_to_send = malloc(sizeof(message_node));
 			mess_to_send->timestamp = -1;
 			strcpy(mess_to_send->author, received_update.user);
-			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, received_update.chatroom, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, chatroom_to_local(received_update.chatroom), 1,
 				MAX_MESSLEN, (char *) mess_to_send);
 
 			/** Send the new client who is in its chatroom **/
@@ -408,7 +431,7 @@ static void Handle_messages()
 			mess_to_send = malloc(sizeof(message_node));
 			mess_to_send->timestamp = -2;
 			strcpy(mess_to_send->author, received_update.user);
-			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, received_update.chatroom, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, chatroom_to_local(received_update.chatroom), 1,
 				MAX_MESSLEN, (char *) mess_to_send);
 
 			printf("\nSent leave of %s\n", mess_to_send->author);
@@ -450,15 +473,8 @@ static void Handle_messages()
 			if(Is_caused_join_mess(service_type)) {
 				
 				/** Send the new client the recent 25 messages **/
-				printf("\nSender: %s\n", sender);
-				printf("Def: %s\n", default_group);
-				printf("Ind: %s\n", individual_group);
-				printf("\nTrying to send 25\n");
 				if(strcmp(sender, default_group) != 0) {
-					//if(strcmp(sender, individual_group != 0)) {
-						printf("\nCalling send 25      - -******\n");
-						Send_Recent_TwentyFive(sender);
-					//}
+					Send_Recent_TwentyFive(sender);
 				}
 			}
 		}
@@ -535,11 +551,12 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 		}
 		curr_room = curr_room->next;
 	}
-	
+
 	/** Iterate tmp3 25 spaces ahead **/
 	tmp3 = curr_room->mess_head;
+	tmp2 = curr_room->mess_head;
 	int end = 0;
-	while(curr_room != NULL && end < 25) {
+	while(tmp3 != NULL && end < 25) {
 		tmp3 = tmp3->next;
 		end++;
 	}
@@ -554,11 +571,10 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 	curr_mess = curr_room->mess_head;
 	while(curr_mess->next != NULL) {
 		//Multicast the message to the client which requested the messages
-		//TODO: Set next to null
 		tmp = curr_mess->next;
 		curr_mess->next = NULL;
 		SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, client_private_group, 1, MAX_MESSLEN,
-			(char *) &curr_mess);
+			(char *) curr_mess);
 		curr_mess = tmp;
 	}
 
@@ -653,4 +669,22 @@ void Send_Server_View()
 		printf("%d) %s", i, current_group[i]);
 	}*/
 	//TODO: SEND ---- DO NOT PRINT
+}
+
+char* chatroom_to_local(char chatroom[])
+{
+	int chatroom_len = strlen(chatroom);
+	int local_len = strlen(local);
+	
+	local = malloc(sizeof(char[80]));
+	strncpy(local, chatroom, chatroom_len-1);
+	printf("\nLocal version: %s\n", local);
+	char* server_index_char = malloc(sizeof(char));
+	char tmp = (char)(((int)'0')+machine_index);
+	printf("\nTMP: %c\n", tmp);
+	*server_index_char = tmp;
+	printf("\nServer index: %s\n", server_index_char);
+	strcat(local, server_index_char);
+	printf("\nLOCAL: %s\n", local);
+	return local;
 }
