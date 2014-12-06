@@ -108,14 +108,6 @@ int main(int argc, char *argv[])
 		updates[i].size = INITIAL_SIZE;
 		updates[i].array = malloc(sizeof(update)*INITIAL_SIZE);
 	}
-	//to_change = malloc(sizeof(user_node));
-
-	/*printf("\nERROR MESSAGES\n");
-	printf("\nILLEGAL_SESSION: %d\n", ILLEGAL_SESSION);
-	printf("\nILLEGAL_MESSAGE %d\n", ILLEGAL_MESSAGE);
-	printf("\nCONNECTION_CLOSED %d\n", CONNECTION_CLOSED);
-	printf("\nGROUPS SHORT %d\n", GROUPS_TOO_SHORT);
-	printf("\nBUFFER TOO SHORT %d\n", BUFFER_TOO_SHORT);*/
 
 	/* Process and send messages using the Spread Event System */
 	E_init();
@@ -297,6 +289,7 @@ static void Handle_messages()
 		/** Check if its a complete history request **/
 		else if(received_update.type == 3) {
 			//Send the complete history to the client which requested it
+			printf("\n***************REQUEST FOR HISTORY***********\n");
 			Send_All_Messages(received_update.chatroom, sender);
 		}
 
@@ -530,6 +523,8 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 	struct chatroom_node * curr_room = chatroom_head;
 	struct message_node * curr_mess;
 	struct message_node * tmp;
+	struct message_node * tmp2; //goes to 25th to last
+	struct message_node * tmp3; //goes to last
 
 	/** Look for correct chatroom **/
 	while(strcmp(curr_room->chatroom_name, room_name) != 0) {
@@ -540,7 +535,22 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 		}
 		curr_room = curr_room->next;
 	}
+	
+	/** Iterate tmp3 25 spaces ahead **/
+	tmp3 = curr_room->mess_head;
+	int end = 0;
+	while(curr_room != NULL && end < 25) {
+		tmp3 = tmp3->next;
+		end++;
+	}
 
+	/** Iterate tmp3 and tmp2 until tmp3 is null **/
+	while(tmp3 != NULL) {
+		tmp2 = tmp2->next;
+		tmp3 = tmp3->next;
+	}
+
+	/** Iterate through and print out until at tmp2**/
 	curr_mess = curr_room->mess_head;
 	while(curr_mess->next != NULL) {
 		//Multicast the message to the client which requested the messages
@@ -553,7 +563,9 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 	}
 
 	/** Send message noting that sending is gone **/
-	//Send message node with timestamp -1
+	curr_mess->timestamp = -3;
+	SP_multicast(Mbox, AGREED_MESS, client_private_group, 1, MAX_MESSLEN,
+		(char *) curr_mess);
 }
 
 

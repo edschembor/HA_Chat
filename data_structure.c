@@ -146,10 +146,7 @@ message_node* add_message(char * new_mess, char * room_name, lamport_timestamp t
     }
 	
 	while (curr_mess->next != NULL) {
-		printf("\nThis loop for others\n");
         curr_lamport = (10 * curr_mess->timestamp) + (curr_mess->server_index);
-		printf("\ncurrent lamport: %d\n", curr_lamport);
-		printf("\nlamport: %d\n", lamport);
 
 		if (lamport < curr_lamport) {
 			to_add->next = curr_mess->next->next;

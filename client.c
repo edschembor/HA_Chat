@@ -61,6 +61,7 @@ message_node      messages_to_show[25];
 lamport_timestamp messages_shown_timestamps[25];
 user_node         user_list;
 int               you_added = 0;
+int               history_line_count = 1;
 
 update            *update_message;
 
@@ -472,7 +473,10 @@ static void Read_message()
 				Print_messages();
 			}
 			else if (lamport < smallest_lamport) {
-				//TODO: history
+				//Its history - Print the message
+				printf("\n%d) %s: %s\n", history_line_count, received_message.author,
+					received_message.message);
+				history_line_count++;
 			}
 		}
 
@@ -503,6 +507,14 @@ static void Read_message()
 			strcpy(left_user->user, received_message.author);
 			remove_user(head, left_user);
 			Print_messages();
+		}
+		
+		/** This is a "history done sending" message**/
+		else if(received_message.timestamp == -3) {
+			//Print last 25
+			history_line_count = 0;
+			printf("\nGOT END MESSAGEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\n");
+			printf("\n-----------------------\n");
 		}
 
 	}
