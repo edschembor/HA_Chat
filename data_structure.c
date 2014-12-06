@@ -116,8 +116,6 @@ message_node* add_message(char * new_mess, char * room_name, lamport_timestamp t
         curr_room = curr_room->next;
     }
 
-	printf("\nChatroom\n");
-
     /*create message to add*/
     message_node * to_add = malloc(sizeof(message_node));
     to_add->server_index = ts.server_index;
@@ -125,24 +123,20 @@ message_node* add_message(char * new_mess, char * room_name, lamport_timestamp t
     to_add->chatroom_name = room_name;
     strcpy(to_add->message, new_mess);
 
-	printf("\n222\n");
-
-    /*iterate through messages in room*/
     curr_mess = curr_room->mess_head;
+	printf("\nMESSAGE ADDED TO: %s\n",curr_room->chatroom_name);
 
     /*if head doesn't exist add, return*/
     if (curr_mess == NULL) {
+		printf("\n--------THE HEAD WAS NULL------\n");
         curr_room->mess_head = to_add;
         return to_add;
     }
 
-	printf("\n333\n");
-
-//    int curr_lamport = (10 * curr_mess->timestamp) + (curr_mess->server_index);
-
-  //  TODO necessary? if 1 element in list base case*/
+    //TODO necessary? if 1 element in list base case*/
     if (curr_mess->next == NULL) {
-        if (lamport < curr_lamport) {
+		printf("\nHERE - adding second\n");
+        if (lamport <= curr_lamport) {
             to_add->next = curr_room->mess_head;
             curr_room->mess_head = to_add;
         } else {
@@ -150,19 +144,13 @@ message_node* add_message(char * new_mess, char * room_name, lamport_timestamp t
         }
         return to_add;
     }
-
-	printf("\n444\n");
-	
-    /*while (lamport > curr_lamport) {
-        prev_mess = curr_mess;
-        curr_mess = curr_mess->next;
-        if (curr_mess == NULL) //FIXME i hate this.
-            break;
-        curr_lamport = (10 * curr_mess->timestamp) + (curr_mess->server_index);
-    }*/
 	
 	while (curr_mess->next != NULL) {
+		printf("\nThis loop for others\n");
         curr_lamport = (10 * curr_mess->timestamp) + (curr_mess->server_index);
+		printf("\ncurrent lamport: %d\n", curr_lamport);
+		printf("\nlamport: %d\n", lamport);
+
 		if (lamport < curr_lamport) {
 			to_add->next = curr_mess->next->next;
 			curr_mess->next = to_add;
@@ -170,21 +158,9 @@ message_node* add_message(char * new_mess, char * room_name, lamport_timestamp t
 		}
 		curr_mess = curr_mess->next;
 	}
-/*
-	while (curr_mess != NULL) {
-        prev_mess = curr_mess;
-        curr_mess = curr_mess->next;
-        if (lamport > curr_lamport) //FIXME i hate this.
-            break;
-        curr_lamport = (10 * curr_mess->timestamp) + (curr_mess->server_index);
-    }
 
-    if (curr_mess == NULL) {
-        prev_mess->next = to_add;
-        return to_add;
-    }
-    to_add->next = curr_mess;
-    prev_mess->next = to_add;*/
+	curr_mess->next = to_add;
+
     return to_add;
 
 }

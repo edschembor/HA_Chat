@@ -252,6 +252,9 @@ static void User_command()
 			user_list.next = NULL;
 			you_added = 0;
 			capacity = 0;
+			for(int i = 0; i < 25; i++) {
+				messages_to_show[i].server_index = -1;
+			}
 
 			break;
 
@@ -267,11 +270,6 @@ static void User_command()
                 command[i] = command[i+2];
             }
             command[i] = '\0';
-            //sscanf( &command[2], "%s", input );
-			
-			//Allows spaces in input message
-			//if(fgets(input, 80, stdin) == NULL)
-			//	Bye();
 
 			update_message->type = 0;
 			strcpy(update_message->user, user);
@@ -360,12 +358,13 @@ int valid(int line_number)
 		printf("\nLINE NUMBER INVALID\n");
 		return 0;
 	}
-	printf("\ncapacity: %d\n", capacity);
 	return 1;
 }
 
 void Print_messages()
 {
+	int chatroom_len = strlen(current_room);
+
 	printf("\n------------------------------------");
 	printf("\nChatroom: %s\n", current_room);
 	printf("\nAttendees: ");
@@ -463,6 +462,7 @@ static void Read_message()
 			printf("\nDebug> Smallest: %d\n", smallest_lamport);
 
 			if (lamport >= smallest_lamport) {
+				printf("\nInserting: %s\n", received_message.message);
 				insert(received_message);
 				Print_messages();
 			}
@@ -520,16 +520,9 @@ int insert(message_node mess) {
     int i, j;
     int lamport;
     int curr_lamport;
-/*    
-	if (capacity < 25) {
-        messages_to_show[capacity] = mess;
-        capacity++;
-        return 0; //success
-    }
-  */  
+  
 	lamport = (mess.timestamp * 10) + mess.server_index;
     
-	//for (i = 0; i < capacity; i++) {
 	for (i = 0; i < 25; i++) {
         if (messages_to_show[i].server_index == -1) {
             messages_to_show[i] = mess;

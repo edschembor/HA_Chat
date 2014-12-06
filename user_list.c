@@ -32,8 +32,6 @@ int remove_user(user_node *head, user_node *to_remove)
 		}
 	}
 
-	printf("\nHere\n");
-
 	if(head->next == NULL) {
 		return 0;
 	}
@@ -59,8 +57,6 @@ int remove_user_partition(user_node *head, int connected_server_index)
 		return 0;
 	}
 
-	printf("\n55555\n");
-
 	while(tmp->next != NULL) {
 		printf("\nHERE: %s\n", tmp->user);
 		if(tmp->next->connected_server == connected_server_index) {
@@ -69,8 +65,6 @@ int remove_user_partition(user_node *head, int connected_server_index)
 		}
 		tmp = tmp->next;
 	}
-
-	printf("\n66666\n");
 
 	return 1;
 }
