@@ -128,14 +128,14 @@ message_node* add_message(char * new_mess, char * room_name, lamport_timestamp t
 
     /*if head doesn't exist add, return*/
     if (curr_mess == NULL) {
-		//printf("\n--------THE HEAD WAS NULL------\n");
+		printf("\n--------ADDING FIRST------\n");
         curr_room->mess_head = to_add;
         return to_add;
     }
 
     //TODO necessary? if 1 element in list base case*/
     if (curr_mess->next == NULL) {
-		//printf("\nHERE - adding second\n");
+		printf("\n--------ADDING SECOND-------\n");
         if (lamport <= curr_lamport) {
             to_add->next = curr_room->mess_head;
             curr_room->mess_head = to_add;
@@ -147,6 +147,8 @@ message_node* add_message(char * new_mess, char * room_name, lamport_timestamp t
 	
 	while (curr_mess->next != NULL) {
         curr_lamport = (10 * curr_mess->timestamp) + (curr_mess->server_index);
+		printf("\nLamport: %d\n", lamport);
+		printf("\nCurrent Lamport: %d\n", curr_lamport);
 
 		if (lamport < curr_lamport) {
 			to_add->next = curr_mess->next->next;

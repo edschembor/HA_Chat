@@ -54,6 +54,10 @@ char             individual_group[MAX_NAME];
 
 int              entropy_matrix[NUM_SERVERS][NUM_SERVERS];
 int              entropy_received = 0;
+int              waiting_on;
+int              burst_size = 100;
+int              received = 0;
+int              merging = 0;
 
 int              lamport_counter;
 char*            local;
@@ -124,6 +128,8 @@ int main(int argc, char *argv[])
 
 	E_attach_fd(Mbox, READ_FD, Handle_messages, 0, NULL, HIGH_PRIORITY);
 
+	//E_attach_fd(0, READ_FD, -----, 0, NULL, LOW_PRIORITY);
+
 	E_handle_events();
 }
 
@@ -154,9 +160,20 @@ static void Handle_messages()
 	printf("\nGOT A NON-BROKEN MESSAGE\n");
 	
 	if(Is_regular_mess( service_type )) {
+		printf("\nWAS A REGULAR MESSAGE\n");
 		
 		//Cast the message to an update
 		received_update = *((update *) mess);
+
+		int test = 0;
+		/*if(strcmp(received_update.user, "") == 0) {
+			return;
+		}(*/
+
+		printf("\nWEIRD TYPE: %d\n", received_update.type);
+		printf("\nWEIRD USER: %s\n", received_update.user);
+		printf("\nWEIRD CHATROOM: %s\n", received_update.chatroom);
+		printf("\nSENDER %s\n", sender);
 
 		/** Check if it is an unlike **/
 		if(received_update.type == -1) {
@@ -245,16 +262,21 @@ static void Handle_messages()
 		else if(received_update.type == 0) {
 			printf("\nDebug> Got an append message request\n");
 
-			received_update.lamport.timestamp = lamport_counter++;
+			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
+				printf("\nUPDATING TIMESTAMP\n");
+				received_update.lamport.timestamp = lamport_counter++;
+			}
 			
 			//Perform the new message update
 			changed_message = add_message(received_update.message, received_update.chatroom, 
 				received_update.lamport);
 
-			//Stamp the message
-			changed_message->timestamp = lamport_counter;
-			changed_message->server_index = machine_index;
-			strcpy(changed_message->author, received_update.user);
+			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
+				//Stamp the message
+				changed_message->timestamp = lamport_counter;
+				changed_message->server_index = machine_index;
+				strcpy(changed_message->author, received_update.user);
+			}
 	
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -280,18 +302,19 @@ static void Handle_messages()
 			}
 			printf("\nSent message: %s\n", received_update.message);
 
-			/** Send to local, not the same as sender **/
-			//char chatroom_local[80];
-			//strcpy(chatroom, chatroom_to_local(received_update.chatroom));
 
 
 			//Send the updated line to the clients in the chatroom connected to this server
+			printf("\nSent to client user: %s\n", changed_message->author);
 			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, chatroom_to_local(received_update.chatroom), 1, MAX_MESSLEN,
 				(char *) changed_message);
 		}
 
 		/** Check if it is an entropy vector for merging **/
 		else if(received_update.type == 2) {
+			
+			printf("\nGOT AN ENTROPY VECTOR\n");
+			printf("\nNum groups waiting on: %d\n", waiting_on);
 			//Update your matrix with the received message
 			int origin = received_update.lamport.server_index;
 			for(int i = 0; i < NUM_SERVERS; i++) {
@@ -301,16 +324,18 @@ static void Handle_messages()
 			//TODO: Deal with mid partition - ie) look for membership change
 			
 			//If all have been received, send out updates if you are the max
-			if(++entropy_received == num_groups) {
-				Send_Merge_Updates();
+			if(++entropy_received == waiting_on) {
+				//Send_Merge_Updates();
+				printf("\nHERE!!!!!!WOOOOOOO\n");
 			}
 			
 			//Update your local vector
 			for(int i = 0; i < NUM_SERVERS; i++) {
 				entropy_matrix[machine_index-1][i] = entropy_matrix[i][i];
 			}
-
-			Clear_Updates();
+			
+			printf("\nDONE!!!\n");
+			//Clear_Updates();
 		}
 
 		/** Check if its a complete history request **/
@@ -490,13 +515,17 @@ static void Handle_messages()
 
 			//If it was an addition, merge
 			if(merge_case) {
+				printf("\nIN MERGE CASE\n");
+				waiting_on = num_groups-1;
+				/** Flow control merging = 1; **/
 				//Send your anti-entropy vector as an update
-				//update entropy_update = malloc(sizeof(update));
+				update *entropy_update = malloc(sizeof(update));
+				entropy_update->type = 2;
 				for(int i = 0; i < NUM_SERVERS; i++) {
-					//entropy_update.vector[i] = entropy_matrix[machine_index-1][i];
+					entropy_update->vector[i] = entropy_matrix[machine_index-1][i];
 				}
-				//SP_multicast(Mbox, AGREED_MESS, group, 1, MAX_MESSLEN, 
-				//	(char *) &update);
+				SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1, MAX_MESSLEN, 
+					(char *) entropy_update);
 				entropy_received = 0;
 			}
 
@@ -519,8 +548,10 @@ static void Handle_messages()
 
 void Send_Merge_Updates()
 {
+
+
+	#if 0
 	/** TODO: Should it be max in group? **/
-	//TODO: AFTER WORKING
 	/** Send necessary updates **/
 	for(int i = 0; i < NUM_SERVERS; i++) {
 		if(Is_Max(entropy_matrix[i])) {
@@ -538,7 +569,33 @@ void Send_Merge_Updates()
 	 		}
 	 	}
 	}
+	#endif
+
+
+	/** Current state: Everyone sends everything to everyone **/
+	update *update_to_send = malloc(sizeof(update));
+	for(int i = 0; i < NUM_SERVERS; i++) {
+		int s = updates[i].size;
+		for(int j = 0; j < s; j++) {
+			printf("\nSending update\n");
+			//Set update_to_send
+			update_to_send = &updates[i].array[j];
+
+			//Send the update
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1,
+				MAX_MESSLEN, (char *) update_to_send);
+		}
+	}
+
+	/** Flow control **/
+	/*if(merging == 1 && received >= burst_size) {
+		TODO: Send shit
+	}
+	if(sent them all) {
+		merging = 0;
+	}*/
 }
+
 
 int Is_Max(int vector[])
 {
