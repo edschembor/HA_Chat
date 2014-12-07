@@ -21,6 +21,7 @@
 #define SPREAD_NAME "10030"
 #define MAX_MEMBERS 100
 #define MAX_MESSLEN 1400
+#define NUM_SERVERS 5
 
 /** Method Declarations **/
 void Print_menu();
@@ -202,7 +203,6 @@ static void User_command()
 			strcat(chatroom, &server_number);
 			strcpy(current_room, chatroom);
 			ret = SP_join(Mbox, chatroom);
-			printf("\nJOINED: %s\n", chatroom);
 			if(ret < 0) SP_error(ret);
 			server = atoi(input); //For connection
 
@@ -309,6 +309,7 @@ static void User_command()
 			}
 
 			update_message->type = 1;
+			strcpy(update_message->chatroom, current_room);
 			update_message->liked_message_lamp.timestamp = messages_to_show[chosen-1].timestamp;
 			update_message->liked_message_lamp.server_index = messages_to_show[chosen-1].server_index;
 			
@@ -320,7 +321,6 @@ static void User_command()
 
 		case 'r':
 			/** Create the unlike update and send it to the chatroom Spread group **/
-			printf("\nSending unlike!!!!\n");
 			if(!in_chatroom) {
 				printf("\nMust first connect to a chatroom\n");
 				break;
@@ -333,6 +333,7 @@ static void User_command()
                 break;   
             }
 
+			strcpy(update_message->chatroom, current_room);
 			update_message->type = -1;
 			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
 			update_message->liked_message_lamp.server_index = messages_to_show[chosen-1].server_index;
@@ -353,7 +354,7 @@ static void User_command()
 			system("clear");
 			printf("HISTORY: \n");
 			update_message->type = 3;
-			printf("\n\n\n\nHISTORY*****REQUEST\n");
+			strcpy(update_message->chatroom, current_room);
 			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1, 
 				MAX_MESSLEN, (char *) update_message);
 			waiting_history = 1;
@@ -361,7 +362,15 @@ static void User_command()
 
 		case 'v':
 			/** Print the servers in the current server's network **/
-			//TODO: Send request to the server
+			if(!connected) {
+				printf("\nPlease connect to a server first.\n");
+				break;
+			}
+
+			strcpy(update_message->chatroom, current_room);
+			update_message->type = 7;
+			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+				MAX_MESSLEN, (char *) update_message);
 			break;
 
 		case 'p':
@@ -472,8 +481,6 @@ static void Read_message()
 		/** Deal with a normal message**/
 		if(received_message.timestamp >= 0) {
 
-			printf("\nGot message with timestamp: %d\n", received_message.timestamp);
-
 			if (capacity == 0) {
 				insert(received_message);
 				printf("\nInserting message\n");
@@ -487,7 +494,6 @@ static void Read_message()
 			smallest_lamport = (messages_to_show[0].timestamp * 10) + messages_to_show[0].server_index;
 
 			if (lamport >= smallest_lamport) {
-				printf("\nInserting: %s\n", received_message.message);
 				insert(received_message);
 				Print_messages();
 			}
@@ -495,7 +501,7 @@ static void Read_message()
 				int likes = 0;
 				
 				//Its history - Print the message
-				printf("\n%d) %s: %s\n", history_line_count, 
+				printf("\n%d) %s: %s", history_line_count, 
 					received_message.author, received_message.message);
 
 				//Deal with printing likes
@@ -505,6 +511,7 @@ static void Read_message()
 				}else{
 					likes = received_message.num_likes;
 				}
+
 				if(likes != 0) {
 					printf("	Likes: %d\n", likes);
 				}
@@ -556,10 +563,25 @@ static void Read_message()
 			printf("\n-----------------------\n");
 		}
 
+		/** This is a message containing the server view **/
+		else if(received_message.timestamp == -4) {
+			system("clear");
+			printf("-------------------------------\n");
+			printf("Current Server View:\n");
+			for(int i = 1; i < NUM_SERVERS+1; i++) {
+				printf("Server %d: ", i);
+				if(received_message.message[i] == 1) {
+					printf("Connected\n");
+				}else{
+					printf("Not Connected\n");
+				}
+			}
+			printf("--------------------------------\n");
+		}
+
 	}
 
     else if (Is_membership_mess( service_type )) {
-        printf("\nDebug> Client got a membership message\n");
         if (num_groups <= 1) {
             printf("\nConnection failed, server is unresponsive\n");
             SP_leave(Mbox, chatroom);

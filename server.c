@@ -81,7 +81,9 @@ int main(int argc, char *argv[])
 	strcpy(individual_group, "server");
 	char *machine_index_str;
 	char *spread_username;
-	//sprintf(spread_username, "%d", machine_index);
+	
+	printf("\nmachine index: %d\n", machine_index);
+
 	sprintf(machine_index_str, "%d", machine_index);
 	strcat(individual_group, machine_index_str);
 
@@ -441,9 +443,22 @@ static void Handle_messages()
 			printf("\nSent leave of %s\n", mess_to_send->author);
 			printf("\nSent left message to %s\n", received_update.chatroom);
 		}
+
+		/** Deal with a "server view" request **/
+		else if(received_update.type == 7) {
+			printf("\nGot server view message\n");
+			changed_message->timestamp = -4;
+			for(int i = 1; i < NUM_SERVERS+1; i++) {
+				changed_message->message[i] = group_status[i];
+				printf("INT: %d\n", i);
+			}
+			printf("\nHere\n");
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, chatroom_to_local(received_update.chatroom), 1, MAX_MESSLEN, (char *) changed_message);
+			printf("\nHere\n");
+		}
 			
 	}else if( Is_membership_mess( service_type )) {
-		
+
 		/** Check if it was an update from the server group **/
 		if(strcmp(sender, SERVER_GROUP_NAME) == 0) {
 			printf("\nDebug> Membership message from the server group");
@@ -590,10 +605,11 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 
 	/** Iterate through and print out until at tmp2**/
 	curr_mess = curr_room->mess_head;
-	while(curr_mess->next != NULL) {
+	while(curr_mess->next != tmp2) {
 		//Multicast the message to the client which requested the messages
 		tmp = curr_mess->next;
 		curr_mess->next = NULL;
+		printf("\nSENDING A MESSAGE FOR THE HISTORY\n");
 		SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, client_private_group, 1, MAX_MESSLEN,
 			(char *) curr_mess);
 		curr_mess = tmp;

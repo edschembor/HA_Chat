@@ -1,10 +1,8 @@
 CC=gcc
 LD=gcc
 CFLAGS=-g -Wall -std=c99
-CPPFLAGS=-I. -I/home/jan10/cs437/final_project/HA_Chat/include
-SP_LIBRARY_DIR=/home/jan10/cs437/final_project/HA_Chat
-#CPPFLAGS=-I. -I/home/eschemb1/distributed/final/include
-#SP_LIBRARY_DIR=/home/eschemb1/distributed/final
+CPPFLAGS=-I. -I/home/eschemb1/distributed/final/include
+SP_LIBRARY_DIR=/home/eschemb1/distributed/final
 
 all: server client
 
