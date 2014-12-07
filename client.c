@@ -14,6 +14,8 @@
 #include <string.h>
 #include <ctype.h>
 #include "update.h"
+#include <time.h>
+#include <sys/time.h>
 
 #define MAX_STRING 80
 #define SPREAD_NAME "10030"
@@ -78,6 +80,9 @@ int main()
 	test_timeout.usec = 0;
 
 	/** Connect to the Spread client **/
+	struct timeval val;
+	gettimeofday(&val, NULL);
+	sprintf(User, "%ld\n", (val.tv_sec));
 	ret = SP_connect_timeout( Spread_name, User, 0, 1, &Mbox, Private_group,
 		test_timeout);
 	if(ret != ACCEPT_SESSION)

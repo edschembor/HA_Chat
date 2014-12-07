@@ -35,6 +35,8 @@ char* chatroom_to_local(char[]);
 
 /** Global Variables **/
 static int       machine_index;
+int              group_status[NUM_SERVERS];
+int              prev_group_status[NUM_SERVERS];
 
 static char      Spread_name[MAX_NAME] = SPREAD_NAME;
 static char      Private_group[MAX_NAME];
@@ -78,11 +80,13 @@ int main(int argc, char *argv[])
 	/** Set up the server name **/
 	strcpy(individual_group, "server");
 	char *machine_index_str;
+	char *spread_username;
+	//sprintf(spread_username, "%d", machine_index);
 	sprintf(machine_index_str, "%d", machine_index);
 	strcat(individual_group, machine_index_str);
 
 	/** Connect to the Spread client **/
-	ret = SP_connect_timeout( Spread_name, individual_group, 0, 1, &Mbox, Private_group,
+	ret = SP_connect_timeout( Spread_name, machine_index_str, 0, 1, &Mbox, Private_group,
 		test_timeout);
 	if(ret != ACCEPT_SESSION)
 	{
@@ -270,7 +274,7 @@ static void Handle_messages()
 				printf("\nTARGET GROUP: %s\n", target_groups[0]);
 				printf("\nSERVER GROUP NAME: %s\n", SERVER_GROUP_NAME);
 				SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1, MAX_MESSLEN,
-					(char *) received_update);
+					(char *) &received_update);
 			}
 			printf("\nSent message: %s\n", received_update.message);
 
@@ -445,6 +449,23 @@ static void Handle_messages()
 			printf("\nDebug> Membership message from the server group");
 			printf("\nDebug> Message from: %s\n", sender);
 
+			/** Maintain the servers in your parition **/
+			int server_index;
+			int merge_case = 0;
+			printf("\nServer Group Membership Change\n");
+			for(int i = 0; i < NUM_SERVERS; i++) {
+				prev_group_status[i] = group_status[i];
+				group_status[i] = 0;
+			}
+			for(int i = 0; i < num_groups; i++) {
+				printf("%s\n", &target_groups[i][0]);
+				server_index = atoi(&target_groups[i][1]);
+				group_status[server_index] = 1;
+				if(!prev_group_status[server_index]) {
+					merge_case = 1;
+				}
+			}
+
 			/** Set the new view of chat servers in the current server's newtwork component**/
 			for(int i = 0; i < NUM_SERVERS; i++) {
 				for(int j = 0; j < MAX_GROUP_NAME; j++) { 
@@ -453,7 +474,7 @@ static void Handle_messages()
 			}
 
 			//If it was an addition, merge
-			if(Is_caused_join_mess(service_type)) {
+			if(merge_case) {
 				//Send your anti-entropy vector as an update
 				//update entropy_update = malloc(sizeof(update));
 				for(int i = 0; i < NUM_SERVERS; i++) {
