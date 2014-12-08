@@ -1,0 +1,26 @@
+TODO (In order of importance)
+====
+
+1) Get normal chat working across different servers
+	->I think there is something weird with the lamport timestamps now
+	->Debug: Print lamport received on each message received from a server, check insert()
+
+2) Get unlikes working
+	->Pretty much just copy like implementation
+	
+4) Merging
+	->Currently, the merge method is VERY innefficient and 
+	Yair would not be ammused by it.
+	->Users currently in a chatroom is not dealt with at all 
+	during merging yet
+	->Deal with paritions during a merge (see design document)
+	->Helper methods aleady exist
+	
+3) Get username working in send last 25
+	->Currently, when a user joins a chatroom which has been running, that
+	user will get the last 25 messages from the chatroom, but not who is 
+	currently connected to it.
+
+5) Deal with clients becoming partitioned from the server
+	->See design document
+	->Should be relatively easy with the code from Jeff's email

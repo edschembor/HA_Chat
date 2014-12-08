@@ -484,7 +484,6 @@ static void Read_message()
 
 			if (capacity == 0) {
 				insert(received_message);
-				printf("\nInserting message\n");
 				Print_messages();
 				printf("\nUser> ");
 				fflush(stdout);
@@ -583,12 +582,28 @@ static void Read_message()
 	}
 
     else if (Is_membership_mess( service_type )) {
+		int partitioned_from_server = 1;
         if (num_groups <= 1) {
-            printf("\nConnection failed, server is unresponsive\n");
+            printf("\nServer is unresponsive. Please connect to another server\n");
             SP_leave(Mbox, chatroom);
         } else {
+			/** Check if a server-client partition **/
+			//loop through "groups" to make sure server is still there
+			int server_in_group = 0;
+			for(int i = 0; i < num_groups; i++) {
+				server_in_group = atoi(&target_groups[i][1]);
+				if(server_in_group > 0 && server_in_group <=5) {
+					partitioned_from_server = 0;
+				}
+			}
+
+			if(partitioned_from_server == 0) {
             printf("\nConnection successful!\n");
 			connected = 1;
+			}else{
+				printf("\nServer is unresponsive. Please connect to another server\n");
+				connected = 0;
+			}
         }
     }
 	if(!waiting_history) {
@@ -604,19 +619,15 @@ int insert(message_node mess) {
     int curr_lamport;
   
 	lamport = (mess.timestamp * 10) + mess.server_index;
-   
-	printf("\n11111\n");
 
 	for (i = 0; i < 25; i++) {
         if (messages_to_show[i].server_index == -1) {
-			printf("\n22222\n");
             messages_to_show[i] = mess;
             capacity++;
             return 0;
         }
         curr_lamport = (messages_to_show[i].timestamp * 10) + messages_to_show[i].server_index;
         if (lamport <= curr_lamport) {
-			printf("\n33333\n");
             if (lamport == curr_lamport) {
                 messages_to_show[i] = mess;
                 return 0;
