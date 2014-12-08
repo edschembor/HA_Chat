@@ -62,6 +62,7 @@ char              input[MAX_STRING];
 int               min_message_shown;
 message_node      messages_to_show[25];
 lamport_timestamp messages_shown_timestamps[25];
+
 user_node         user_list;
 int               you_added = 0;
 int               history_line_count = 1;
@@ -493,11 +494,11 @@ static void Read_message()
 			lamport = (received_message.timestamp * 10) + received_message.server_index;
 			smallest_lamport = (messages_to_show[0].timestamp * 10) + messages_to_show[0].server_index;
 
-			if (lamport >= smallest_lamport) {
+			if (lamport >= smallest_lamport || !waiting_history) {
 				insert(received_message);
 				Print_messages();
 			}
-			else if (lamport < smallest_lamport) {
+			else if (lamport < smallest_lamport && waiting_history) {
 				int likes = 0;
 				
 				//Its history - Print the message
@@ -603,15 +604,19 @@ int insert(message_node mess) {
     int curr_lamport;
   
 	lamport = (mess.timestamp * 10) + mess.server_index;
-    
+   
+	printf("\n11111\n");
+
 	for (i = 0; i < 25; i++) {
         if (messages_to_show[i].server_index == -1) {
+			printf("\n22222\n");
             messages_to_show[i] = mess;
             capacity++;
             return 0;
         }
         curr_lamport = (messages_to_show[i].timestamp * 10) + messages_to_show[i].server_index;
         if (lamport <= curr_lamport) {
+			printf("\n33333\n");
             if (lamport == curr_lamport) {
                 messages_to_show[i] = mess;
                 return 0;
