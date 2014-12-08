@@ -61,7 +61,6 @@ char              input[MAX_STRING];
 
 int               min_message_shown;
 message_node      messages_to_show[25];
-lamport_timestamp messages_shown_timestamps[25];
 
 user_node         user_list;
 int               you_added = 0;
@@ -336,7 +335,7 @@ static void User_command()
 
 			strcpy(update_message->chatroom, current_room);
 			update_message->type = -1;
-			update_message->liked_message_lamp = messages_shown_timestamps[chosen];
+			update_message->liked_message_lamp.timestamp = messages_to_show[chosen-1].timestamp;
 			update_message->liked_message_lamp.server_index = messages_to_show[chosen-1].server_index;
 			
 			//Send out the update to the server
