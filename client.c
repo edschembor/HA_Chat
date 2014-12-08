@@ -619,6 +619,8 @@ int insert(message_node mess) {
     int curr_lamport;
   
 	lamport = (mess.timestamp * 10) + mess.server_index;
+	printf("\nINSERTING LAMPORT: %d\n", lamport);
+	printf("\nINSERTING CREATOR: %s\n", mess.author);
 
 	for (i = 0; i < 25; i++) {
         if (messages_to_show[i].server_index == -1) {

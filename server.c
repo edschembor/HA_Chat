@@ -207,9 +207,12 @@ static void Handle_messages()
 
 		/** Check if it is a like **/
 		else if(received_update.type == 1) {
+			
 			//Stamp the message
-			received_update.lamport.timestamp = lamport_counter++;
-			received_update.lamport.server_index = machine_index;
+			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
+				received_update.lamport.timestamp = lamport_counter++;
+				received_update.lamport.server_index = machine_index;
+			}
 
 			//Perform the like update
 			changed_message = like(received_update.user, received_update.lamport, 
@@ -218,6 +221,9 @@ static void Handle_messages()
             if (changed_message == NULL) {
                 return;
             }
+
+			//changed_message->timestamp = received_update.lamport.timestamp;
+			//changed_message->server_index = received_update.lamport.server_index;
 
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -237,7 +243,7 @@ static void Handle_messages()
 			//Multicast the update to all servers
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
 				SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, server_group, 1, MAX_MESSLEN,
-					update_between_servers);
+					(char *) &received_update);
 			}
 
 			//Send the updated line to the clients in the chatroom connected to this server
@@ -247,23 +253,26 @@ static void Handle_messages()
 
 		/** Check if it is a chat message **/
 		else if(received_update.type == 0) {
-			printf("\nDebug> Got an append message request\n");
 
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
-				printf("\nUPDATING TIMESTAMP\n");
 				received_update.lamport.timestamp = lamport_counter++;
+				received_update.lamport.server_index = machine_index;
 			}
 			
 			//Perform the new message update
 			changed_message = add_message(received_update.message, received_update.chatroom, 
 				received_update.lamport);
 
-			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
+			strcpy(changed_message->author, received_update.user);
+
+			//if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
 				//Stamp the message
-				changed_message->timestamp = lamport_counter;
-				changed_message->server_index = machine_index;
-				strcpy(changed_message->author, received_update.user);
-			}
+			//	changed_message->timestamp = lamport_counter;
+			//	changed_message->server_index = machine_index;
+			//}
+			
+			changed_message->timestamp = received_update.lamport.timestamp;
+			changed_message->server_index = received_update.lamport.server_index;
 	
 			//Put in updates array
 			int origin = received_update.lamport.server_index;
@@ -283,7 +292,7 @@ static void Handle_messages()
 			//Multicast the update to all servers
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
 				SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1, MAX_MESSLEN,
-					update_between_servers);
+					(char *) &received_update);
 			}
 
 			//Send the updated line to the clients in the chatroom connected to this server
