@@ -55,6 +55,8 @@ struct chatroom_node * chatroom_head;
 int add_chatroom(char * new_name) {
     //create chatroom to add
     struct chatroom_node * to_add = malloc(sizeof(chatroom_node));
+    struct user_node * sentinel = malloc(sizeof(user_node));
+    to_add->user_list_head = sentinel;
 
     if (to_add == NULL)
         return 0;

@@ -1,6 +1,7 @@
 /** The user structure - this allows us to create a linked list of users
  *  which are currently in a chatroom**/
 
+
 typedef struct user_node {
 	char  *user;
 	struct user_node * next;
@@ -10,6 +11,7 @@ typedef struct user_node {
 /** Adds a user to a user linked list **/
 void add_user(user_node *head, user_node *to_add)
 {
+
 	user_node *tmp = head;
 	while(tmp->next != NULL)
 	{

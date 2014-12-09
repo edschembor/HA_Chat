@@ -349,7 +349,7 @@ static void Handle_messages()
 			to_change->connected_server = machine_index;
 			
 			//Add it to the data structure
-			add_user(tmp, to_change);
+			add_user(tmp->user_list_head, to_change);
 
 			/** Send update to other servers **/
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
@@ -377,7 +377,7 @@ static void Handle_messages()
 				tmp_room = tmp_room->next;
 			}
 			//Send the user updates in the server's data structure to the new client
-			user_node *tmp_user = tmp_room->user_list_head;
+			user_node *tmp_user = tmp_room->user_list_head->next;
 			strcpy(mess_to_send->author, tmp_user->user);
 			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, sender, 1, MAX_MESSLEN, 
 				(char *) mess_to_send);
@@ -414,7 +414,7 @@ static void Handle_messages()
 			to_change->connected_server = machine_index;
 			
 			//Remove it from the data structure
-			remove_user(tmp, to_change);
+			remove_user(tmp->user_list_head, to_change);
 			
 			/** Send update to other servers **/
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
