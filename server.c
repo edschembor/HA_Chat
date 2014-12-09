@@ -32,6 +32,7 @@ void Clear_Updates();
 void Compare_Lamport();
 void Send_Server_View();
 char* chatroom_to_local(char[]);
+char* chatroom_sans_index(char chatroom[]);
 
 /** Global Variables **/
 static int       machine_index;
@@ -173,7 +174,7 @@ static void Handle_messages()
 			
 			//Perform the unlike update on linked list
 			changed_message = unlike(received_update.user, received_update.liked_message_lamp, 
-				received_update.chatroom);
+				chatroom_sans_index(received_update.chatroom));
 
 			if(changed_message == NULL) {
 				return;
@@ -216,7 +217,7 @@ static void Handle_messages()
 
 			//Perform the like update
 			changed_message = like(received_update.user, received_update.lamport, 
-			received_update.liked_message_lamp, received_update.chatroom);
+			received_update.liked_message_lamp, chatroom_sans_index(received_update.chatroom));
             
             if (changed_message == NULL) {
                 return;
@@ -262,8 +263,8 @@ static void Handle_messages()
 				received_update.lamport.server_index = machine_index;
 			}
 			
-			//Perform the new message update
-			changed_message = add_message(received_update.message, received_update.chatroom, 
+                //Perform the new message update
+			changed_message = add_message(received_update.message, chatroom_sans_index(received_update.chatroom), 
 				received_update.lamport);
 
 			strcpy(changed_message->author, received_update.user);	
@@ -331,7 +332,7 @@ static void Handle_messages()
 			chatroom_node *tmp;
 			
 			if(chatroom_head == NULL) {
-				add_chatroom(received_update.chatroom);
+				add_chatroom(chatroom_sans_index(received_update.chatroom));
 			}
 
 			tmp = chatroom_head;
@@ -397,7 +398,7 @@ static void Handle_messages()
 			chatroom_node *tmp;
 			
 			if(chatroom_head == NULL) {
-				add_chatroom(received_update.chatroom);
+				add_chatroom(chatroom_sans_index(received_update.chatroom));
 			}
 
 			tmp = chatroom_head;
@@ -489,6 +490,7 @@ static void Handle_messages()
 				
 				/** Send the new client the recent 25 messages **/
 				if(strcmp(sender, default_group) != 0) {
+                    printf("\nI got here\n");
 					Send_Recent_TwentyFive(sender);
 				}
 			}
@@ -641,7 +643,7 @@ void Send_Recent_TwentyFive(char *room_name)
 	}
 
 	/** Look for the correct chatroom **/
-	while(strcmp(curr_room->chatroom_name, room_name) != 0) {
+	while(strcmp(curr_room->chatroom_name, chatroom_sans_index(room_name)) != 0) {
 		if(curr_room->next == NULL) {
 			return;
 		}
@@ -710,4 +712,12 @@ char* chatroom_to_local(char chatroom[])
 	*server_index_char = tmp;
 	strcat(local, server_index_char);
 	return local;
+}
+
+char* chatroom_sans_index(char chatroom[]) {
+	int chatroom_len = strlen(chatroom);
+
+	local = malloc(sizeof(char[80]));
+	strncpy(local, chatroom, chatroom_len-1);
+    return local;
 }
