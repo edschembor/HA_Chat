@@ -168,7 +168,7 @@ static void Handle_messages()
 		if(received_update.type == -1) {
 			
 			//Stamp the message
-			received_update.lamport.timestamp = lamport_counter++;
+			received_update.lamport.timestamp = ++lamport_counter;
 			received_update.lamport.server_index = machine_index;
 			
 			//Perform the unlike update on linked list
@@ -210,7 +210,7 @@ static void Handle_messages()
 			
 			//Stamp the message
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
-				received_update.lamport.timestamp = lamport_counter++;
+				received_update.lamport.timestamp = ++lamport_counter;
 				received_update.lamport.server_index = machine_index;
 			}
 
@@ -254,8 +254,11 @@ static void Handle_messages()
 		/** Check if it is a chat message **/
 		else if(received_update.type == 0) {
 
+			//Compare timestamp with yours
+			Compare_Lamport(received_update.lamport.timestamp);
+
 			if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
-				received_update.lamport.timestamp = lamport_counter++;
+				received_update.lamport.timestamp = ++lamport_counter;
 				received_update.lamport.server_index = machine_index;
 			}
 			
@@ -263,14 +266,7 @@ static void Handle_messages()
 			changed_message = add_message(received_update.message, received_update.chatroom, 
 				received_update.lamport);
 
-			strcpy(changed_message->author, received_update.user);
-
-			//if(strcmp(target_groups[0], SERVER_GROUP_NAME) != 0) {
-				//Stamp the message
-			//	changed_message->timestamp = lamport_counter;
-			//	changed_message->server_index = machine_index;
-			//}
-			
+			strcpy(changed_message->author, received_update.user);	
 			changed_message->timestamp = received_update.lamport.timestamp;
 			changed_message->server_index = received_update.lamport.server_index;
 	
@@ -280,10 +276,7 @@ static void Handle_messages()
 			updates[origin-1].array[element_count] = received_update;
 			updates[origin-1].element_count++;
 			updates[origin-1] = attempt_double(updates[origin-1]);
-
-			//Compare timestamp with yours
-			Compare_Lamport(received_update.lamport.timestamp);
-
+			
 			//Increase entropy vector
 			if(received_update.lamport.timestamp > entropy_matrix[machine_index-1][origin]) {
 				entropy_matrix[machine_index-1][origin] = received_update.lamport.timestamp;

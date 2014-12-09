@@ -432,8 +432,9 @@ void Print_messages()
 	for(int i = 0; i < capacity; i++)
 	{
 		mess_len = strlen(messages_to_show[i].message);
-		printf("%d) %s: %.*s", i+1, messages_to_show[i].author,
-			mess_len-1, messages_to_show[i].message);
+		printf("%d) %s: %.*s %d%d", i+1, messages_to_show[i].author,
+			mess_len-1, messages_to_show[i].message, messages_to_show[i].timestamp,
+			messages_to_show[i].server_index);
 		if(messages_to_show[i].like_head == NULL) {
 			like_count = 0;
 			printf("\n");
@@ -618,8 +619,6 @@ int insert(message_node mess) {
     int curr_lamport;
   
 	lamport = (mess.timestamp * 10) + mess.server_index;
-	printf("\nINSERTING LAMPORT: %d\n", lamport);
-	printf("\nINSERTING CREATOR: %s\n", mess.author);
 
 	for (i = 0; i < 25; i++) {
         if (messages_to_show[i].server_index == -1) {

@@ -34,7 +34,7 @@ typedef struct message_node {
 
 /** Used for the chatroom list which is held by each server **/
 typedef struct chatroom_node {
-    char * chatroom_name;
+    char chatroom_name[80];
 	struct user_node * user_list_head; //The linked list of users currently in the chatroom
     struct message_node * mess_head;
     struct chatroom_node * next;
@@ -50,8 +50,6 @@ int remove_chatroom(char * name);
 int remove_message(char * room_name, lamport_timestamp ts);
 message_node* unlike(char * user, lamport_timestamp mess_ts, char * room);
 
-
-
 struct chatroom_node * chatroom_head;
 
 int add_chatroom(char * new_name) {
@@ -61,7 +59,7 @@ int add_chatroom(char * new_name) {
     if (to_add == NULL)
         return 0;
 
-    to_add->chatroom_name = new_name;
+	strcpy(to_add->chatroom_name, new_name);
 
     //if head is null, set head to node to_add
     if (chatroom_head == NULL) {

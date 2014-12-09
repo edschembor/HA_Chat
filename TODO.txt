@@ -1,11 +1,7 @@
 TODO (In order of importance)
 ====
 
-1) Get unlikes working
-	->Pretty much just copy like implementation
-	->Part is already implemented
-	
-2) Merging
+1) Merging
 	->Currently, the merge method is VERY innefficient and 
 	Yair would not be ammused by it.
 	->Users currently in a chatroom is not dealt with at all 
@@ -13,14 +9,16 @@ TODO (In order of importance)
 	->Deal with paritions during a merge (see design document)
 	->Helper methods aleady exist
 	
-3) Get username working in send last 25
+2) Get username working in send last 25
 	->Currently, when a user joins a chatroom which has been running, that
 	user will get the last 25 messages from the chatroom, but not who is 
 	currently connected to it.
 	->Need to iterate through the user_list on the server and send the
 	user joins to the new client
 	
-4) Client server partition
+3) Client server partition
 	->Does a server know which client was partitioned/left? 
 	->Try ^C clients
 	->PRETTY MUCH DONE -> 1 MORE CASE TO TEST
+	
+4) Username with partitions and crashes
