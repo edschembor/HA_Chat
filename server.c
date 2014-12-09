@@ -296,7 +296,9 @@ static void Handle_messages()
 
 		/** Check if it is an entropy vector for merging **/
 		else if(received_update.type == 2) {
-		
+	
+			printf("\nGOT A VECTOR\n");
+
 			//Update your matrix with the received message
 			int origin = received_update.lamport.server_index;
 			for(int i = 0; i < NUM_SERVERS; i++) {
@@ -307,6 +309,7 @@ static void Handle_messages()
 			
 			//If all have been received, send out updates if you are the max
 			if(++entropy_received == waiting_on) {
+				printf("\nABOUT TO MERGE\n");
 				Send_Merge_Updates();
 			}
 			
@@ -320,6 +323,7 @@ static void Handle_messages()
 		/** Check if its a complete history request **/
 		else if(received_update.type == 3) {
 			//Send the complete history to the client which requested it
+			printf("\nREQUEST FOR HISTORY\n");
 			Send_All_Messages(received_update.chatroom, sender);
 		}
 
@@ -470,6 +474,7 @@ static void Handle_messages()
 
 			//If it was an addition, merge
 			if(merge_case) {
+				printf("\n-------IN MERGE CASE---------\n");
 				waiting_on = num_groups-1;
 				/** Flow control merging = 1; **/
 				//Send your anti-entropy vector as an update
@@ -525,6 +530,7 @@ void Send_Merge_Updates()
 
 
 	/** Current state: Everyone sends everything to everyone **/
+	printf("\nMERGING!!!!!\n");
 	update *update_to_send = malloc(sizeof(update));
 	for(int i = 0; i < NUM_SERVERS; i++) {
 		int s = updates[i].size;
@@ -535,6 +541,7 @@ void Send_Merge_Updates()
 			//Send the update
 			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group, 1,
 				MAX_MESSLEN, (char *) update_to_send);
+			printf("\nSENT A MERGE UPDATE\n");
 		}
 	}
 
@@ -551,7 +558,7 @@ void Send_Merge_Updates()
 int Is_Max(int vector[])
 {
 	/** Checks if the server for the given anti-entropy vector is the server
-	 *  with the most updates **/
+	 *  with the most updates in its current partition **/
 	int server_val = vector[machine_index - 1];
 	for(int i = 0; i < NUM_SERVERS; i++) {
 		if(vector[i] > server_val)
@@ -617,6 +624,7 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 		//Multicast the message to the client which requested the messages
 		tmp = curr_mess->next;
 		curr_mess->next = NULL;
+		printf("\nSENDING A MESSAGE\n");
 		SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, client_private_group, 1, MAX_MESSLEN,
 			(char *) curr_mess);
 		curr_mess = tmp;
@@ -624,7 +632,8 @@ void Send_All_Messages(char *room_name, char *client_private_group)
 
 	/** Send message noting that sending is gone **/
 	curr_mess->timestamp = -3;
-	SP_multicast(Mbox, AGREED_MESS, client_private_group, 1, MAX_MESSLEN,
+	printf("\nSent end message\n");
+	SP_multicast(Mbox, AGREED_MESS | SELF_DISCARD, client_private_group, 1, MAX_MESSLEN,
 		(char *) curr_mess);
 }
 

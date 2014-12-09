@@ -166,7 +166,7 @@ static void User_command()
 			update_message->type = 6;
 			strcpy(update_message->chatroom, current_room);
 			strcpy(update_message->user, user);
-			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 
 			/** Set the new username **/
@@ -177,7 +177,7 @@ static void User_command()
 			/** Send join update **/
 			update_message->type = 5;
 			strcpy(update_message->user, user);
-			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 
 			break;
@@ -237,14 +237,14 @@ static void User_command()
 			strcpy(update_message->chatroom, chatroom_join);
 			strcpy(update_message->user, user);
 			printf("\nServer group string: %s\n", server_group_string);
-			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 			SP_join(Mbox, chatroom_join);
 
 			//Send out the leave update to the server
 			update_message->type = 6;
 			strcpy(update_message->chatroom, current_room);
-			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 
 			//Join the new chatroom group
@@ -286,7 +286,7 @@ static void User_command()
 			strcpy(update_message->message, command);
 			strcpy(update_message->chatroom, current_room);
 			update_message->lamport.server_index = server;
-			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 			break;
 
@@ -314,7 +314,7 @@ static void User_command()
 			update_message->liked_message_lamp.server_index = messages_to_show[chosen-1].server_index;
 			
 			//Send out the update to the server
-			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 
 			break;
@@ -339,7 +339,7 @@ static void User_command()
 			update_message->liked_message_lamp.server_index = messages_to_show[chosen-1].server_index;
 			
 			//Send out the update to the server
-			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 
 			break;
@@ -355,7 +355,7 @@ static void User_command()
 			printf("HISTORY: \n");
 			update_message->type = 3;
 			strcpy(update_message->chatroom, current_room);
-			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1, 
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group_string, 1, 
 				MAX_MESSLEN, (char *) update_message);
 			waiting_history = 1;
 			break;
@@ -369,7 +369,7 @@ static void User_command()
 
 			strcpy(update_message->chatroom, current_room);
 			update_message->type = 7;
-			SP_multicast(Mbox, AGREED_MESS, server_group_string, 1,
+			SP_multicast(Mbox, AGREED_MESS|SELF_DISCARD, server_group_string, 1,
 				MAX_MESSLEN, (char *) update_message);
 			break;
 
@@ -637,9 +637,19 @@ int insert(message_node mess) {
     }
     
 	//shift values
-    for (j = 0; j < i-1; j++) {
-        messages_to_show[j] = messages_to_show[j+1];
-    }
+	if (capacity < 25) {
+		for (j = 23; j > i-1; j--) {
+			messages_to_show[j+1] = messages_to_show[j];
+		}
+		j++;
+		capacity++;
+	}
+	else {
+		for (j = 1; j < i; j++) {
+			messages_to_show[j-1] = messages_to_show[j];
+		}
+		j--;
+	}
     messages_to_show[j] = mess;
     return 0;
 }

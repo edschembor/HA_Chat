@@ -2,23 +2,30 @@ TODO (In order of importance)
 ====
 
 1) Merging
-	->Currently, the merge method is VERY innefficient and 
-	Yair would not be ammused by it.
 	->Users currently in a chatroom is not dealt with at all 
 	during merging yet
+		->How to do: Server sends out joins to new server
 	->Deal with paritions during a merge (see design document)
-	->Helper methods aleady exist
+		->How to do: -Variable
 	
-2) Get username working in send last 25
+	UPDATES:
+		If from another server, put into an updates array.
+		
+	
+2) History Fix
+	->Check send to_local()
+	
+3) Get username working in send last 25
 	->Currently, when a user joins a chatroom which has been running, that
 	user will get the last 25 messages from the chatroom, but not who is 
 	currently connected to it.
-	->Need to iterate through the user_list on the server and send the
+	->How to do: Need to iterate through the user_list on the server and send the
 	user joins to the new client
 	
-3) Client server partition
-	->Does a server know which client was partitioned/left? 
-	->Try ^C clients
-	->PRETTY MUCH DONE -> 1 MORE CASE TO TEST
+5) Client partitions
+	->How to do: We have the remove user method for this
 	
-4) Username with partitions and crashes
+4) Client crashes/partitions
+	-> ^C
+		->Clients send message to server, server multicasts back (?)
+		->ADD TO DESIGN DOCUMENT
